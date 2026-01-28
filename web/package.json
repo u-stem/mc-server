@@ -20,8 +20,8 @@
     "fix": "biome check --write src"
   },
   "dependencies": {
-    "lucide-react": "^0.469.0",
-    "next": "16.1.5",
+    "lucide-react": "^0.563.0",
+    "next": "16.1.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "rcon-client": "^4.2.4",
