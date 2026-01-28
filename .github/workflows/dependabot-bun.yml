@@ -26,7 +26,7 @@ jobs:
           bun-version: latest
 
       - name: Update bun.lock
-        run: bun install --frozen-lockfile=false
+        run: bun install
 
       - name: Check for changes
         id: changes
