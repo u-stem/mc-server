@@ -107,7 +107,6 @@ export function VersionManager({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* 新バージョン入力 */}
             <Input
               label="新しいバージョン"
               type="text"
@@ -117,7 +116,6 @@ export function VersionManager({
               error={newVersion && !isValidVersion ? 'バージョン形式が正しくありません' : undefined}
             />
 
-            {/* ダウングレード警告 */}
             {isDowngrade && (
               <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
                 <strong>警告:</strong> ダウングレードしようとしています。
@@ -126,7 +124,6 @@ export function VersionManager({
               </div>
             )}
 
-            {/* バックアップオプション */}
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"

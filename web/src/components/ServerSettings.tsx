@@ -195,7 +195,6 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
           </Alert>
         )}
 
-        {/* カテゴリタブ */}
         <div
           role="tablist"
           className="flex gap-2 mb-6 border-b border-gray-700 pb-4 overflow-x-auto"
@@ -218,7 +217,6 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
           ))}
         </div>
 
-        {/* 設定フォーム */}
         <div className="space-y-4">
           {PROPERTY_CATEGORIES[activeCategory].properties.map((prop) => (
             <div key={prop.key}>

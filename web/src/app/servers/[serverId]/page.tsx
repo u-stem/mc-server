@@ -92,7 +92,6 @@ export default function ServerDetailPage({ params }: PageProps) {
     return () => clearInterval(interval);
   }, [fetchServer]);
 
-  // Mod数を取得（Modサーバーの場合のみ）
   useEffect(() => {
     async function fetchModCount() {
       if (!server || !isModServer(server.type)) {
@@ -112,7 +111,6 @@ export default function ServerDetailPage({ params }: PageProps) {
     fetchModCount();
   }, [server, serverId]);
 
-  // プラグイン数を取得（プラグインサーバーの場合のみ）
   useEffect(() => {
     async function fetchPluginCount() {
       if (!server || !isPluginServer(server.type)) {
@@ -213,7 +211,6 @@ export default function ServerDetailPage({ params }: PageProps) {
   const showPluginsTab = isPluginServer(server.type);
   const preset = getPresetById(server.presetId || 'balanced');
 
-  // タブラベルをサーバータイプに応じて変更
   const getExtensionTabLabel = () => {
     if (showModsTab && showPluginsTab) return 'Mod / プラグイン';
     if (showModsTab) return 'Mod';
@@ -240,7 +237,6 @@ export default function ServerDetailPage({ params }: PageProps) {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -288,7 +284,6 @@ export default function ServerDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="border-b border-gray-700 mb-6">
         <div
           className="flex gap-1 overflow-x-auto pb-px"
@@ -339,16 +334,13 @@ export default function ServerDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Tab Content */}
       <div>
-        {/* 概要タブ */}
         <div
           id="tabpanel-overview"
           role="tabpanel"
           aria-labelledby="tab-overview"
           className={activeTab === 'overview' ? '' : 'hidden'}
         >
-          {/* ステータスサマリー */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-800 rounded-lg p-4">
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">プレイヤー</p>
@@ -376,7 +368,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* 接続情報 */}
             <Card>
               <CardHeader>
                 <h3 className="font-semibold">接続情報</h3>
@@ -414,7 +405,6 @@ export default function ServerDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            {/* サーバー情報 */}
             <Card>
               <CardHeader>
                 <h3 className="font-semibold">サーバー情報</h3>
@@ -479,7 +469,6 @@ export default function ServerDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            {/* オンラインプレイヤー */}
             {server.status.players.list.length > 0 && (
               <Card className="lg:col-span-2">
                 <CardHeader>
@@ -507,7 +496,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* コンソールタブ */}
         <div
           id="tabpanel-console"
           role="tabpanel"
@@ -517,7 +505,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           <Console serverId={serverId} isRunning={server.status.running} />
         </div>
 
-        {/* プレイヤータブ */}
         <div
           id="tabpanel-players"
           role="tabpanel"
@@ -534,14 +521,12 @@ export default function ServerDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Mod / プラグインタブ */}
         <div
           id="tabpanel-mods"
           role="tabpanel"
           aria-labelledby="tab-mods"
           className={activeTab === 'mods' ? '' : 'hidden'}
         >
-          {/* ハイブリッドサーバー（Mod + プラグイン両対応） */}
           {showModsTab && showPluginsTab ? (
             <div className="space-y-6">
               <ModManager serverId={serverId} serverRunning={server.status.running} />
@@ -583,7 +568,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* バックアップタブ */}
         <div
           id="tabpanel-backups"
           role="tabpanel"
@@ -594,7 +578,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           <WorldImport serverId={serverId} serverRunning={server.status.running} />
         </div>
 
-        {/* 基本設定タブ */}
         <div
           id="tabpanel-settings"
           role="tabpanel"
@@ -604,7 +587,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           <BasicSettingsTab serverId={serverId} server={server} onUpdate={fetchServer} />
         </div>
 
-        {/* サーバー設定タブ */}
         <div
           id="tabpanel-properties"
           role="tabpanel"
@@ -614,7 +596,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           <ServerPropertiesTab serverId={serverId} serverRunning={server.status.running} />
         </div>
 
-        {/* バージョンタブ */}
         <div
           id="tabpanel-version"
           role="tabpanel"
@@ -631,7 +612,6 @@ export default function ServerDetailPage({ params }: PageProps) {
           />
         </div>
 
-        {/* ヘルプタブ */}
         <div
           id="tabpanel-help"
           role="tabpanel"

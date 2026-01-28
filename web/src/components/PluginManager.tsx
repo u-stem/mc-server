@@ -271,7 +271,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
 
           {error && <Alert variant="error">{error}</Alert>}
 
-          {/* ドラッグ&ドロップエリア */}
           <label
             htmlFor="plugin-file-input"
             onDragOver={handleDragOver}
@@ -358,7 +357,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* トグルスイッチ */}
                     <button
                       type="button"
                       onClick={() => handleToggle(plugin.filename)}
@@ -374,7 +372,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
                         }`}
                       />
                     </button>
-                    {/* 削除ボタン */}
                     <Button
                       variant="ghost"
                       onClick={() => setDeleteTarget(plugin.filename)}
@@ -390,7 +387,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
         </CardContent>
       </Card>
 
-      {/* おすすめプラグイン */}
       <Card className="mt-6">
         <CardHeader>
           <h3 className="font-semibold text-lg">おすすめプラグイン</h3>

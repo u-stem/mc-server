@@ -98,7 +98,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
           </p>
         </CardHeader>
         <CardContent>
-          {/* オンラインプレイヤー */}
           {onlinePlayers.length > 0 && (
             <div className="mb-4">
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
@@ -161,7 +160,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
             </div>
           )}
 
-          {/* オフラインプレイヤー操作 */}
           <div className={onlinePlayers.length > 0 ? 'border-t border-gray-700 pt-4' : ''}>
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">プレイヤー名で操作</p>
             <div className="flex gap-2">

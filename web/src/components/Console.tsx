@@ -62,14 +62,12 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
   }, [fetchLogs, autoRefresh, isRunning]);
 
   useEffect(() => {
-    // serverLogs が更新されたらスクロール
     if (logsContainerRef.current && serverLogs.length > 0) {
       logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
     }
   }, [serverLogs]);
 
   useEffect(() => {
-    // commandHistory が更新されたらスクロール
     if (commandContainerRef.current && commandHistory.length > 0) {
       commandContainerRef.current.scrollTop = commandContainerRef.current.scrollHeight;
     }
@@ -83,7 +81,6 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
     setCommand('');
     setLoading(true);
 
-    // コマンドを履歴に追加
     const commandEntry: CommandEntry = {
       id: `cmd-${Date.now()}`,
       type: 'command',
@@ -173,7 +170,6 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {/* サーバーログ */}
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">サーバーログ</p>
           <div
@@ -196,7 +192,6 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
           </div>
         </div>
 
-        {/* コマンド実行 */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-gray-500 uppercase tracking-wide">コマンド</p>

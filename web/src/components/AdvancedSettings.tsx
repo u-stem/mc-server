@@ -55,7 +55,6 @@ export function AdvancedSettings({ settings, baseSettings, onChange }: AdvancedS
 
       {isExpanded && (
         <div className="p-4 bg-gray-800/50 space-y-6">
-          {/* JVM設定 */}
           <section>
             <h4 className="text-sm font-medium text-gray-300 mb-3">JVM設定</h4>
             <div className="space-y-3">
@@ -68,7 +67,6 @@ export function AdvancedSettings({ settings, baseSettings, onChange }: AdvancedS
             </div>
           </section>
 
-          {/* パフォーマンス */}
           <section>
             <h4 className="text-sm font-medium text-gray-300 mb-3">パフォーマンス</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -97,7 +95,6 @@ export function AdvancedSettings({ settings, baseSettings, onChange }: AdvancedS
             </div>
           </section>
 
-          {/* ゲームプレイ */}
           <section>
             <h4 className="text-sm font-medium text-gray-300 mb-3">ゲームプレイ</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -156,7 +153,6 @@ export function AdvancedSettings({ settings, baseSettings, onChange }: AdvancedS
             </div>
           </section>
 
-          {/* スポーン設定 */}
           <section>
             <h4 className="text-sm font-medium text-gray-300 mb-3">スポーン設定</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
