@@ -1,0 +1,18 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    check:
+      glob: "web/src/**/*.{ts,tsx}"
+      run: bun run check
+    test:
+      glob: "web/src/**/*.{ts,tsx}"
+      run: bun run test:run
+
+pre-push:
+  parallel: true
+  commands:
+    build:
+      run: bun run --cwd web build

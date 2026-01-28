@@ -1,0 +1,22 @@
+{
+  "name": "mc-server",
+  "private": true,
+  "workspaces": ["web"],
+  "scripts": {
+    "dev": "bun run --cwd web dev",
+    "build": "bun run --cwd web build",
+    "start": "bun run --cwd web start",
+    "lint": "bun run --cwd web lint",
+    "test": "bun run --cwd web test",
+    "test:run": "bun run --cwd web test:run",
+    "test:e2e": "bun run --cwd web test:e2e",
+    "test:e2e:ui": "bun run --cwd web test:e2e:ui",
+    "fmt": "bun run --cwd web fmt",
+    "check": "bun run --cwd web check",
+    "fix": "bun run --cwd web fix",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "lefthook": "^2.0.16"
+  }
+}

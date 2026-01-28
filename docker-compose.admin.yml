@@ -1,0 +1,35 @@
+# Minecraft Server Manager - Web UI
+#
+# 使用方法:
+#   docker compose -f docker-compose.admin.yml up -d
+#
+# 環境変数:
+#   HOST_PROJECT_ROOT: このプロジェクトのホスト上のパス（必須）
+#
+# 例:
+#   HOST_PROJECT_ROOT=/home/user/mc-server docker compose -f docker-compose.admin.yml up -d
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: mc-admin
+    # docker.sockへのアクセス権限を付与
+    group_add:
+      - root
+    ports:
+      - "3000:3000"
+    volumes:
+      # ホストのDockerを操作するため
+      - /var/run/docker.sock:/var/run/docker.sock
+      # サーバーデータへのアクセス
+      - ./servers:/app/servers
+      # 既存のサーバーデータ（後方互換）
+      - ./server:/app/server
+    environment:
+      - PROJECT_ROOT=/app
+      - HOST_PROJECT_ROOT=${HOST_PROJECT_ROOT:-.}
+      - NODE_ENV=production
+      - TAILSCALE_IP=${TAILSCALE_IP:-}
+    restart: unless-stopped
