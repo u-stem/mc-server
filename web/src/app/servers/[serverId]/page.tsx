@@ -15,6 +15,7 @@ import { Frown } from '@/components/Icons';
 import { ModManager } from '@/components/ModManager';
 import { PlayerManager } from '@/components/PlayerManager';
 import { PluginManager } from '@/components/PluginManager';
+import { ScheduleSettings } from '@/components/ScheduleSettings';
 import { ServerPropertiesTab } from '@/components/ServerPropertiesTab';
 import { Spinner } from '@/components/Spinner';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -45,6 +46,7 @@ type TabId =
   | 'settings'
   | 'properties'
   | 'version'
+  | 'schedule'
   | 'help';
 
 interface Tab {
@@ -231,6 +233,7 @@ export default function ServerDetailPage({ params }: PageProps) {
     { id: 'settings', label: '基本設定', show: !isBedrock },
     { id: 'properties', label: 'サーバー設定', show: !isBedrock },
     { id: 'version', label: 'バージョン', show: !isBedrock },
+    { id: 'schedule', label: 'スケジュール' },
     { id: 'help', label: 'ヘルプ' },
   ];
   const tabs = allTabs.filter((tab) => tab.show !== false);
@@ -610,6 +613,15 @@ export default function ServerDetailPage({ params }: PageProps) {
               setServer((prev) => (prev ? { ...prev, version: newVersion } : null));
             }}
           />
+        </div>
+
+        <div
+          id="tabpanel-schedule"
+          role="tabpanel"
+          aria-labelledby="tab-schedule"
+          className={activeTab === 'schedule' ? '' : 'hidden'}
+        >
+          <ScheduleSettings serverId={serverId} />
         </div>
 
         <div
