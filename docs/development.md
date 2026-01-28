@@ -110,6 +110,11 @@ mc-server/
 │   │   │   ├── Icons.tsx         # アイコン（lucide-react）
 │   │   │   ├── Spinner.tsx       # ローディングスピナー
 │   │   │   ├── ConfirmDialog.tsx # 確認ダイアログ
+│   │   │   ├── Accordion.tsx     # 折りたたみパネル
+│   │   │   ├── BasicSettingsTab.tsx    # 基本設定タブ
+│   │   │   ├── ServerPropertiesTab.tsx # サーバー設定タブ
+│   │   │   ├── VersionTab.tsx    # バージョン管理タブ
+│   │   │   ├── WorldImport.tsx   # ワールドインポート
 │   │   │   └── ...               # 機能別コンポーネント
 │   │   ├── lib/                  # ユーティリティ
 │   │   │   ├── constants.ts      # 共通定数
@@ -120,6 +125,9 @@ mc-server/
 │   │   │   ├── utils.ts          # ユーティリティ関数
 │   │   │   ├── logger.ts         # ロガー（ログレベル制御）
 │   │   │   ├── pluginCatalog.ts  # Modrinthプラグインカタログ
+│   │   │   ├── world.ts          # ワールドインポート
+│   │   │   ├── backup.ts         # バックアップ操作
+│   │   │   ├── apiHelpers.ts     # API ヘルパー関数
 │   │   │   └── *.test.ts         # テストファイル
 │   │   ├── hooks/                # カスタムフック
 │   │   │   └── useTailscaleIp.ts # Tailscale IP取得フック
@@ -187,6 +195,13 @@ mc-server/
 | POST | `/api/servers/[id]/backups/[backupId]` | バックアップ復元 |
 | DELETE | `/api/servers/[id]/backups/[backupId]` | バックアップ削除 |
 
+### ワールド
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | `/api/servers/[id]/world` | ワールド情報取得 |
+| POST | `/api/servers/[id]/world/import` | ワールドインポート |
+
 ### その他
 
 | メソッド | エンドポイント | 説明 |
@@ -194,6 +209,7 @@ mc-server/
 | GET | `/api/tailscale` | Tailscale IP 取得 |
 | GET | `/api/servers/[id]/properties` | server.properties 取得 |
 | PUT | `/api/servers/[id]/properties` | server.properties 更新 |
+| PUT | `/api/servers/[id]/version` | サーバーバージョン更新 |
 
 ---
 
@@ -303,7 +319,10 @@ web/src/
 │   ├── plugins.test.ts          # プラグイン管理関数のテスト
 │   ├── serverProperties.test.ts # server.properties関連のテスト
 │   ├── logger.test.ts           # ロガーのテスト
-│   └── pluginCatalog.test.ts    # プラグインカタログのテスト
+│   ├── pluginCatalog.test.ts    # プラグインカタログのテスト
+│   ├── world.test.ts            # ワールドインポート関連のテスト
+│   ├── apiHelpers.test.ts       # API ヘルパー関数のテスト
+│   └── backup.test.ts           # バックアップ関連のテスト
 └── types/
     ├── server.test.ts           # サーバー型・関数のテスト
     └── presets.test.ts          # プリセット関数のテスト
@@ -418,6 +437,36 @@ npx lefthook install
 git commit --no-verify -m "message"
 git push --no-verify
 ```
+
+---
+
+## CI/CD（GitHub Actions）
+
+プルリクエストとプッシュ時に自動でテストとビルドを実行します。
+
+### ワークフロー構成
+
+`.github/workflows/ci.yml` で以下のジョブが実行されます：
+
+| ジョブ | 説明 | 実行タイミング |
+|--------|------|---------------|
+| check | Biome によるリント・フォーマットチェック | 全 PR / push |
+| test | Vitest ユニットテスト | 全 PR / push |
+| build | Next.js ビルド | check / test 成功後 |
+| e2e | Playwright E2E テスト | main push または `run-e2e` ラベル付き PR |
+
+### ローカルとの整合性
+
+CI で実行されるコマンドは lefthook と同じです：
+
+```bash
+bun run check    # Biome チェック
+bun run test:run # ユニットテスト
+bun run build    # ビルド
+bun run test:e2e # E2E テスト
+```
+
+ローカルで lefthook が通れば CI も通ります。
 
 ---
 
