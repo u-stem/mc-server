@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -10,6 +11,7 @@ import { Input } from '@/components/Input';
 import { PresetSelector } from '@/components/PresetSelector';
 import { Select } from '@/components/Select';
 import { useToast } from '@/components/Toast';
+import { LABEL_BACK } from '@/lib/messages';
 import type {
   ApiResponse,
   CreateServerRequest,
@@ -303,16 +305,22 @@ export default function NewServerPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-            ← 戻る
+      <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-sm text-gray-400 hover:text-white inline-flex items-center"
+            >
+              {LABEL_BACK}
+            </Link>
+            <span className="text-gray-600">|</span>
+            <h2 className="text-xl font-bold">新規サーバー作成</h2>
+          </div>
+          <Button type="submit" form="create-server-form" loading={loading} disabled={initializing}>
+            作成
           </Button>
-          <h2 className="text-2xl font-bold">新規サーバー作成</h2>
         </div>
-        <Button type="submit" form="create-server-form" loading={loading} disabled={initializing}>
-          作成
-        </Button>
       </div>
 
       <Card>

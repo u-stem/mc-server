@@ -1,7 +1,7 @@
 'use client';
 
 import { Accordion, AccordionGroup } from './Accordion';
-import { InlineCode } from './CodeBlock';
+import { CodeBlock } from './CodeBlock';
 
 function PresetIcon({ icon }: { icon: string }) {
   const iconClass = 'w-5 h-5';
@@ -170,10 +170,10 @@ function SettingDescription({
       {recommended && <p className="text-xs text-green-400">推奨: {recommended}</p>}
       {range && <p className="text-xs text-gray-500">範囲: {range}</p>}
       {options && (
-        <ul className="mt-2 space-y-1">
+        <ul className="list-disc list-inside text-gray-500 text-xs space-y-0.5 mt-2">
           {options.map((option) => (
-            <li key={option.value} className="text-xs text-gray-500">
-              <InlineCode copyable={false}>{option.value}</InlineCode> - {option.label}
+            <li key={option.value}>
+              {option.label} ({option.value})
             </li>
           ))}
         </ul>
@@ -184,9 +184,11 @@ function SettingDescription({
 
 function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
   return (
-    <div className="flex justify-between items-start gap-4 py-1 border-b border-gray-700/50 last:border-0">
-      <InlineCode>{cmd}</InlineCode>
-      <span className="text-gray-400 text-right text-xs sm:text-sm">{desc}</span>
+    <div className="py-2 border-b border-gray-700/50 last:border-0">
+      <div className="flex justify-between items-center gap-4 mb-1">
+        <span className="text-gray-300 text-sm">{desc}</span>
+      </div>
+      <CodeBlock>{cmd}</CodeBlock>
     </div>
   );
 }
@@ -199,7 +201,7 @@ export function GeneralHelpPage() {
         <h3 className="font-semibold text-lg px-1">設定リファレンス</h3>
 
         <AccordionGroup>
-          <Accordion title="プリセットについて" defaultOpen>
+          <Accordion title="プリセットについて">
             <div className="space-y-4 text-sm">
               <p className="text-gray-400">
                 サーバー作成時に選択できるプリセットは、よく使われる設定の組み合わせをまとめたものです。
@@ -365,7 +367,7 @@ export function GeneralHelpPage() {
         </p>
 
         <AccordionGroup>
-          <Accordion title="基本コマンド" defaultOpen>
+          <Accordion title="基本コマンド">
             <div className="grid gap-2 text-sm">
               <CommandRow cmd="list" desc="オンラインプレイヤー一覧" />
               <CommandRow cmd="say [メッセージ]" desc="全体メッセージ送信" />

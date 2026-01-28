@@ -3,23 +3,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ApiResponse, PropertyCategory } from '@/types';
 import { PROPERTY_CATEGORIES } from '@/types';
-import { Alert } from './Alert';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader } from './Card';
 import { Input } from './Input';
 import { Select } from './Select';
 import { useToast } from './Toast';
 
+interface ServerPropertiesTabProps {
+  serverId: string;
+  serverRunning?: boolean;
+  /** 'card' = Card wrapper付き (default), 'plain' = wrapper無し */
+  variant?: 'card' | 'plain';
+}
+
 interface ServerProperties {
   [key: string]: string | number | boolean;
 }
 
-interface ServerSettingsProps {
-  serverId: string;
-  isRunning: boolean;
-}
-
-export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
+export function ServerPropertiesTab({
+  serverId,
+  serverRunning,
+  variant = 'card',
+}: ServerPropertiesTabProps) {
   const { addToast } = useToast();
   const [properties, setProperties] = useState<ServerProperties | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,12 +36,10 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
     try {
       const res = await fetch(`/api/servers/${serverId}/properties`);
       const data: ApiResponse<ServerProperties> = await res.json();
-
       if (data.success && data.data) {
         setProperties(data.data);
       }
-    } catch (error) {
-      console.error('Failed to fetch properties:', error);
+    } catch {
       addToast('error', 'サーバー設定の取得に失敗しました');
     } finally {
       setLoading(false);
@@ -47,13 +50,9 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
     fetchProperties();
   }, [fetchProperties]);
 
-  const handleChange = (key: string, value: string | number | boolean) => {
+  const handlePropertyChange = (key: string, value: string | number | boolean) => {
     if (!properties) return;
-
-    setProperties({
-      ...properties,
-      [key]: value,
-    });
+    setProperties({ ...properties, [key]: value });
     setHasChanges(true);
   };
 
@@ -77,8 +76,7 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
       } else {
         addToast('error', data.error || '設定の保存に失敗しました');
       }
-    } catch (error) {
-      console.error('Failed to save properties:', error);
+    } catch {
       addToast('error', '設定の保存に失敗しました');
     } finally {
       setSaving(false);
@@ -94,7 +92,6 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
     prop: (typeof PROPERTY_CATEGORIES)[PropertyCategory]['properties'][number]
   ) => {
     if (!properties) return null;
-
     const value = properties[prop.key as keyof ServerProperties];
 
     switch (prop.type) {
@@ -104,78 +101,112 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
             <input
               type="checkbox"
               checked={value as boolean}
-              onChange={(e) => handleChange(prop.key, e.target.checked)}
+              onChange={(e) => handlePropertyChange(prop.key, e.target.checked)}
               className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
             />
             <span>{prop.label}</span>
           </label>
         );
-
       case 'select':
         return (
           <Select
             label={prop.label}
             value={value as string}
-            onChange={(e) => handleChange(prop.key, e.target.value)}
+            onChange={(e) => handlePropertyChange(prop.key, e.target.value)}
             options={(prop.options ?? []).map((opt) => ({ value: opt, label: opt }))}
           />
         );
-
       case 'number':
         return (
           <Input
             label={prop.label}
             type="number"
             value={value as number}
-            onChange={(e) => handleChange(prop.key, parseInt(e.target.value, 10) || 0)}
+            onChange={(e) => handlePropertyChange(prop.key, parseInt(e.target.value, 10) || 0)}
             min={prop.min}
             max={prop.max}
           />
         );
-
       default:
         return (
           <Input
             label={prop.label}
             type="text"
             value={value as string}
-            onChange={(e) => handleChange(prop.key, e.target.value)}
+            onChange={(e) => handlePropertyChange(prop.key, e.target.value)}
           />
         );
     }
   };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent>
-          <div className="text-center py-8 text-gray-400">読み込み中...</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!properties) {
-    return (
-      <Card>
-        <CardContent>
-          <div className="text-center py-8 text-gray-400">設定を読み込めませんでした</div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const categories = Object.entries(PROPERTY_CATEGORIES) as [
     PropertyCategory,
     (typeof PROPERTY_CATEGORIES)[PropertyCategory],
   ][];
 
+  const content = (
+    <>
+      {variant === 'plain' && (
+        <div className="flex justify-end gap-2 mb-4">
+          {hasChanges && (
+            <Button variant="ghost" onClick={handleReset} disabled={saving}>
+              リセット
+            </Button>
+          )}
+          <Button onClick={handleSave} loading={saving} disabled={!hasChanges}>
+            保存
+          </Button>
+        </div>
+      )}
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">読み込み中...</div>
+      ) : !properties ? (
+        <div className="text-center py-8 text-gray-400">設定を読み込めませんでした</div>
+      ) : (
+        <>
+          {serverRunning && hasChanges && (
+            <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
+              サーバーが起動中です。設定の変更を反映するには再起動が必要です。
+            </div>
+          )}
+
+          <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 overflow-x-auto">
+            {categories.map(([key, category]) => (
+              <button
+                type="button"
+                key={key}
+                onClick={() => setActiveCategory(key)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                  activeCategory === key
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {PROPERTY_CATEGORIES[activeCategory].properties.map((prop) => (
+              <div key={prop.key}>{renderProperty(prop)}</div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  if (variant === 'plain') {
+    return content;
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <h3 className="font-semibold text-lg">サーバー設定</h3>
-          <p className="text-sm text-gray-400 mt-1">server.properties の設定を変更</p>
+          <h3 className="font-semibold">サーバー設定</h3>
+          <p className="text-sm text-gray-400 mt-1">server.properties の設定</p>
         </div>
         <div className="flex gap-2">
           {hasChanges && (
@@ -188,43 +219,7 @@ export function ServerSettings({ serverId, isRunning }: ServerSettingsProps) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {isRunning && hasChanges && (
-          <Alert variant="warning">
-            サーバーが起動中です。設定の変更を反映するには再起動が必要です。
-          </Alert>
-        )}
-
-        <div
-          role="tablist"
-          className="flex gap-2 mb-6 border-b border-gray-700 pb-4 overflow-x-auto"
-        >
-          {categories.map(([key, category]) => (
-            <button
-              type="button"
-              key={key}
-              role="tab"
-              onClick={() => setActiveCategory(key)}
-              aria-selected={activeCategory === key}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
-                activeCategory === key
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          {PROPERTY_CATEGORIES[activeCategory].properties.map((prop) => (
-            <div key={prop.key}>
-              {prop.type === 'boolean' ? renderProperty(prop) : renderProperty(prop)}
-            </div>
-          ))}
-        </div>
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }

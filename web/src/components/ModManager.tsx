@@ -190,7 +190,6 @@ export function ModManager({ serverId, serverRunning = false }: ModManagerProps)
 
           {error && <Alert variant="error">{error}</Alert>}
 
-          {/* ドラッグ&ドロップエリア */}
           <label
             htmlFor="mod-file-input"
             onDragOver={handleDragOver}
@@ -268,7 +267,6 @@ export function ModManager({ serverId, serverRunning = false }: ModManagerProps)
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* トグルスイッチ */}
                     <button
                       type="button"
                       onClick={() => handleToggle(mod.filename)}
@@ -284,10 +282,8 @@ export function ModManager({ serverId, serverRunning = false }: ModManagerProps)
                         }`}
                       />
                     </button>
-                    {/* 削除ボタン */}
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => setDeleteTarget(mod.filename)}
                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                     >

@@ -26,7 +26,7 @@ test.describe('サーバー編集ページ（サーバー存在時）', () => {
   test.skip('ページタイトルが表示される', async ({ page }) => {
     // 実サーバーが必要なためスキップ
     await page.goto('/servers/test-server/edit');
-    await expect(page.getByRole('heading', { name: 'サーバー設定' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'サーバー編集' })).toBeVisible();
   });
 
   test.skip('タブナビゲーションが表示される', async ({ page }) => {
@@ -37,10 +37,10 @@ test.describe('サーバー編集ページ（サーバー存在時）', () => {
     await expect(page.getByRole('button', { name: 'バージョン' })).toBeVisible();
   });
 
-  test.skip('戻るボタンで詳細ページに遷移できる', async ({ page }) => {
+  test.skip('戻るリンクで詳細ページに遷移できる', async ({ page }) => {
     // 実サーバーが必要なためスキップ
     await page.goto('/servers/test-server/edit');
-    await page.getByRole('button', { name: '← 戻る' }).click();
+    await page.getByRole('link', { name: '← 戻る' }).click();
     await expect(page).toHaveURL('/servers/test-server');
   });
 });

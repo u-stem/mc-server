@@ -98,7 +98,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
           </p>
         </CardHeader>
         <CardContent>
-          {/* オンラインプレイヤー */}
           {onlinePlayers.length > 0 && (
             <div className="mb-4">
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
@@ -132,7 +131,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleAction('op', player)}
                         loading={loading === 'op'}
                         disabled={loading !== null || !isRunning}
@@ -141,7 +139,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleAction('kick', player)}
                         loading={loading === 'kick'}
                         disabled={loading !== null || !isRunning}
@@ -150,7 +147,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                       </Button>
                       <Button
                         variant="danger"
-                        size="sm"
                         onClick={() => handleAction('ban', player)}
                         loading={loading === 'ban'}
                         disabled={loading !== null || !isRunning}
@@ -164,7 +160,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
             </div>
           )}
 
-          {/* オフラインプレイヤー操作 */}
           <div className={onlinePlayers.length > 0 ? 'border-t border-gray-700 pt-4' : ''}>
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">プレイヤー名で操作</p>
             <div className="flex gap-2">
@@ -179,7 +174,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
             <div className="flex flex-wrap gap-2 mt-3">
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('op', targetPlayer)}
                 loading={loading === 'op'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -188,7 +182,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('deop', targetPlayer)}
                 loading={loading === 'deop'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -197,7 +190,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('pardon', targetPlayer)}
                 loading={loading === 'pardon'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -206,7 +198,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="danger"
-                size="sm"
                 onClick={() => handleAction('ban', targetPlayer)}
                 loading={loading === 'ban'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}

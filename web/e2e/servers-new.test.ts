@@ -10,8 +10,8 @@ test.describe('新規サーバー作成ページ', () => {
     await expect(page.getByRole('heading', { name: '新規サーバー作成' })).toBeVisible();
   });
 
-  test('戻るボタンでホームに遷移できる', async ({ page }) => {
-    await page.getByRole('button', { name: '← 戻る' }).click();
+  test('戻るリンクでダッシュボードに遷移できる', async ({ page }) => {
+    await page.getByRole('link', { name: '← 戻る' }).click();
     await expect(page).toHaveURL('/');
   });
 

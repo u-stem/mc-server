@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/Button';
+import { HelpCircle } from '@/components/Icons';
 import { ServerCard } from '@/components/ServerCard';
 import { Spinner } from '@/components/Spinner';
 import { POLLING_INTERVAL_DASHBOARD } from '@/lib/constants';
@@ -70,10 +72,19 @@ export default function Dashboard() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold">サーバー一覧</h2>
+          <h2 className="text-2xl font-bold">ダッシュボード</h2>
           <p className="text-gray-400 text-sm mt-1">{servers.length} 件のサーバー</p>
         </div>
-        <Button onClick={() => router.push('/servers/new')}>新規作成</Button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/help"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <HelpCircle className="w-4 h-4" />
+            ヘルプ
+          </Link>
+          <Button onClick={() => router.push('/servers/new')}>新規作成</Button>
+        </div>
       </div>
 
       {servers.length === 0 ? (

@@ -110,7 +110,6 @@ export function ServerCard({ server, onRefresh }: ServerCardProps) {
             {server.status.running ? (
               <Button
                 variant="danger"
-                size="sm"
                 onClick={() => setShowStopConfirm(true)}
                 loading={loading === 'stop'}
                 disabled={loading !== null}
@@ -120,7 +119,6 @@ export function ServerCard({ server, onRefresh }: ServerCardProps) {
             ) : (
               <Button
                 variant="primary"
-                size="sm"
                 onClick={handleStart}
                 loading={loading === 'start'}
                 disabled={loading !== null}
@@ -128,7 +126,7 @@ export function ServerCard({ server, onRefresh }: ServerCardProps) {
                 起動
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => router.push(`/servers/${server.id}`)}>
+            <Button variant="ghost" onClick={() => router.push(`/servers/${server.id}`)}>
               詳細
             </Button>
           </div>
