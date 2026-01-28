@@ -153,6 +153,10 @@ export async function getServerLogs(
     return stdout + stderr;
   } catch (error) {
     const execError = error as { message?: string };
+    // コンテナが存在しない場合は空文字を返す
+    if (execError.message?.includes('No such container')) {
+      return '';
+    }
     throw new Error(`Failed to get logs: ${execError.message}`);
   }
 }
