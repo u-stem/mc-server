@@ -3,13 +3,13 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { getServerDataPath } from './config';
-import { FOLDER_WORLD } from './constants';
+import { FOLDER_WORLD, MAX_WORLD_UPLOAD_SIZE } from './constants';
 import { validateServerId } from './validation';
 
 const execFileAsync = promisify(execFile);
 
-// ワールドインポートの最大サイズ (500MB)
-export const MAX_WORLD_UPLOAD_SIZE = 500 * 1024 * 1024;
+// Re-export for API routes
+export { MAX_WORLD_UPLOAD_SIZE };
 
 // 対応するアーカイブ拡張子
 const VALID_EXTENSIONS = ['.zip', '.tar.gz'] as const;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { MAX_WORLD_UPLOAD_SIZE } from '@/lib/constants';
 import { formatSize } from '@/lib/utils';
 import type { ApiResponse } from '@/types';
 import { Alert } from './Alert';
@@ -96,9 +97,9 @@ export function WorldImport({ serverId, serverRunning = false }: WorldImportProp
       return;
     }
 
-    // サイズチェック (500MB)
-    if (file.size > 500 * 1024 * 1024) {
-      setError('ファイルサイズが上限（500MB）を超えています');
+    // サイズチェック
+    if (file.size > MAX_WORLD_UPLOAD_SIZE) {
+      setError(`ファイルサイズが上限（${formatSize(MAX_WORLD_UPLOAD_SIZE)}）を超えています`);
       return;
     }
 
@@ -204,7 +205,7 @@ export function WorldImport({ serverId, serverRunning = false }: WorldImportProp
                   ワールドファイル（.zip または .tar.gz）をドラッグ&ドロップ
                 </p>
                 <p className="text-gray-500 text-xs mt-2">
-                  またはクリックしてファイルを選択（最大500MB）
+                  またはクリックしてファイルを選択（最大{formatSize(MAX_WORLD_UPLOAD_SIZE)}）
                 </p>
               </>
             )}

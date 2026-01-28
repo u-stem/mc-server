@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { POLLING_INTERVAL_LOGS } from '@/lib/constants';
+import { DEFAULT_LOG_LINES, POLLING_INTERVAL_LOGS } from '@/lib/constants';
 import type { ApiResponse } from '@/types';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader } from './Card';
@@ -40,7 +40,7 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
     if (!isRunning) return;
 
     try {
-      const res = await fetch(`/api/servers/${serverId}/logs?lines=100`);
+      const res = await fetch(`/api/servers/${serverId}/logs?lines=${DEFAULT_LOG_LINES}`);
       const data: ApiResponse<{ logs: string }> = await res.json();
 
       if (data.success && data.data) {

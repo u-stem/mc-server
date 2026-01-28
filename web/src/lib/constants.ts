@@ -37,6 +37,7 @@ export const BYTES_PER_KB = 1024;
 export const BYTES_PER_MB = BYTES_PER_KB * 1024;
 export const MAX_UPLOAD_SIZE_MB = 50;
 export const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * BYTES_PER_MB;
+export const MAX_WORLD_UPLOAD_SIZE = 500 * BYTES_PER_MB; // 500MB
 
 // タイムアウト（ミリ秒）
 export const TIMEOUT_RCON_MS = 10000;
