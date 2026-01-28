@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { executeConsoleCommand } from '@/lib/rcon';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -16,34 +15,23 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<{ response: string }>>;
     }
 
     const body = await request.json();
     const { command } = body as { command: string };
 
     if (!command || typeof command !== 'string') {
-      return NextResponse.json({ success: false, error: 'Command is required' }, { status: 400 });
+      return errorResponse('Command is required', 400) as NextResponse<
+        ApiResponse<{ response: string }>
+      >;
     }
 
     const response = await executeConsoleCommand(id, command);
 
-    return NextResponse.json({
-      success: true,
-      data: { response },
-    });
+    return successResponse({ response });
   } catch (error) {
     console.error('Failed to execute command:', error);
 
@@ -59,6 +47,6 @@ export async function POST(
       errorMessage = error instanceof Error ? error.message : 'Unknown error';
     }
 
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    return errorResponse(errorMessage) as NextResponse<ApiResponse<{ response: string }>>;
   }
 }

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { addToWhitelist, getWhitelist } from '@/lib/rcon';
-import { AddPlayerSchema, ServerIdSchema } from '@/lib/validation';
+import { AddPlayerSchema } from '@/lib/validation';
 import type { ApiResponse, WhitelistEntry } from '@/types';
 
 interface RouteParams {
@@ -16,30 +16,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<WhitelistEntry[]>>;
     }
 
     const whitelist = await getWhitelist(id);
 
-    return NextResponse.json({
-      success: true,
-      data: whitelist,
-    });
+    return successResponse(whitelist);
   } catch (error) {
     console.error('Failed to get whitelist:', error);
-    return NextResponse.json({ success: false, error: 'Failed to get whitelist' }, { status: 500 });
+    return errorResponse('Failed to get whitelist') as NextResponse<ApiResponse<WhitelistEntry[]>>;
   }
 }
 
@@ -51,19 +38,9 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response;
     }
 
     const body = await request.json();
@@ -72,20 +49,14 @@ export async function POST(
     const parseResult = AddPlayerSchema.safeParse(body);
     if (!parseResult.success) {
       const errors = parseResult.error.issues.map((e) => e.message).join(', ');
-      return NextResponse.json({ success: false, error: errors }, { status: 400 });
+      return errorResponse(errors, 400);
     }
 
-    const result = await addToWhitelist(id, parseResult.data.name);
+    const rconResult = await addToWhitelist(id, parseResult.data.name);
 
-    return NextResponse.json({
-      success: true,
-      data: { message: result },
-    });
+    return successResponse({ message: rconResult });
   } catch (error) {
     console.error('Failed to add to whitelist:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to add player to whitelist' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to add player to whitelist');
   }
 }

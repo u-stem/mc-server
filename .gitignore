@@ -4,7 +4,7 @@
 /docker-compose.yml
 
 # バックアップ（大容量）
-backups/
+/backups/
 
 # キャッシュ
 *.DS_Store

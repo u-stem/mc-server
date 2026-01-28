@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server';
-import { deleteServer, getServer, updateServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import {
+  errorResponse,
+  successResponse,
+  validateAndGetServer,
+  validateServerId,
+} from '@/lib/apiHelpers';
+import { deleteServer, updateServer } from '@/lib/config';
 import { getServerStatus } from '@/lib/docker';
-import { CreateServerSchema, ServerIdSchema } from '@/lib/validation';
+import { CreateServerSchema } from '@/lib/validation';
 import type { ApiResponse, ServerConfig, ServerDetails } from '@/types';
 
 interface RouteParams {
@@ -16,30 +22,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ServerDetails>>;
     }
 
     const status = await getServerStatus(id);
 
-    return NextResponse.json({
-      success: true,
-      data: { ...server, status },
-    });
+    return successResponse({ ...result.server, status });
   } catch (error) {
     console.error('Failed to get server:', error);
-    return NextResponse.json({ success: false, error: 'Failed to get server' }, { status: 500 });
+    return errorResponse('Failed to get server') as NextResponse<ApiResponse<ServerDetails>>;
   }
 }
 
@@ -51,25 +44,21 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
+    const validation = validateServerId(id);
+    if (!validation.valid) {
+      return validation.response;
     }
 
     const deleted = await deleteServer(id);
 
     if (!deleted) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+      return errorResponse('Server not found', 404);
     }
 
-    return NextResponse.json({ success: true });
+    return successResponse();
   } catch (error) {
     console.error('Failed to delete server:', error);
-    return NextResponse.json({ success: false, error: 'Failed to delete server' }, { status: 500 });
+    return errorResponse('Failed to delete server');
   }
 }
 
@@ -81,13 +70,9 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
+    const validation = validateServerId(id);
+    if (!validation.valid) {
+      return validation.response as NextResponse<ApiResponse<ServerConfig>>;
     }
 
     const body = await request.json();
@@ -98,25 +83,21 @@ export async function PUT(
 
     if (!parseResult.success) {
       const errors = parseResult.error.issues.map((e) => e.message).join(', ');
-      return NextResponse.json(
-        { success: false, error: `Validation error: ${errors}` },
-        { status: 400 }
-      );
+      return errorResponse(`Validation error: ${errors}`, 400) as NextResponse<
+        ApiResponse<ServerConfig>
+      >;
     }
 
     const updated = await updateServer(id, parseResult.data);
 
     if (!updated) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+      return errorResponse('Server not found', 404) as NextResponse<ApiResponse<ServerConfig>>;
     }
 
-    return NextResponse.json({
-      success: true,
-      data: updated,
-    });
+    return successResponse(updated);
   } catch (error) {
     console.error('Failed to update server:', error);
     const message = error instanceof Error ? error.message : 'Failed to update server';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return errorResponse(message) as NextResponse<ApiResponse<ServerConfig>>;
   }
 }

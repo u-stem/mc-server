@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { getContainerInfo, getServerStatus } from '@/lib/docker';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, ServerStatus } from '@/types';
 
 interface RouteParams {
@@ -16,37 +15,21 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ServerStatus>>;
     }
 
     const status = await getServerStatus(id);
     const containerInfo = await getContainerInfo(id);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...status,
-        uptime: containerInfo?.uptime,
-        memory: containerInfo?.memory,
-      },
+    return successResponse({
+      ...status,
+      uptime: containerInfo?.uptime,
+      memory: containerInfo?.memory,
     });
   } catch (error) {
     console.error('Failed to get server status:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to get server status' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to get server status') as NextResponse<ApiResponse<ServerStatus>>;
   }
 }
