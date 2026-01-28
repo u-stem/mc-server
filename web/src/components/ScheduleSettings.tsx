@@ -247,45 +247,35 @@ export function ScheduleSettings({ serverId }: ScheduleSettingsProps) {
               <div className="p-4 bg-gray-800 rounded-lg">
                 <p className="text-sm text-gray-400 mb-3">一括設定</p>
                 <div className="flex flex-wrap items-end gap-3">
-                  <Select
-                    label="対象"
-                    value={bulkTarget}
-                    onChange={(e) => setBulkTarget(e.target.value as typeof bulkTarget)}
-                    options={[
-                      { value: 'weekdays', label: '平日（月〜金）' },
-                      { value: 'weekend', label: '週末（土日）' },
-                      { value: 'all', label: '全曜日' },
-                    ]}
-                  />
-                  <label className="block">
-                    <span className="block text-xs text-gray-500 mb-1">開始</span>
-                    <select
+                  <div className="w-36">
+                    <Select
+                      label="対象"
+                      value={bulkTarget}
+                      onChange={(e) => setBulkTarget(e.target.value as typeof bulkTarget)}
+                      options={[
+                        { value: 'weekdays', label: '平日（月〜金）' },
+                        { value: 'weekend', label: '週末（土日）' },
+                        { value: 'all', label: '全曜日' },
+                      ]}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Select
+                      label="開始"
                       value={bulkStart}
                       onChange={(e) => setBulkStart(e.target.value)}
-                      className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm"
-                    >
-                      {TIME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <span className="text-gray-500 pb-1.5">〜</span>
-                  <label className="block">
-                    <span className="block text-xs text-gray-500 mb-1">終了</span>
-                    <select
+                      options={TIME_OPTIONS}
+                    />
+                  </div>
+                  <span className="text-gray-500 pb-2">〜</span>
+                  <div className="w-24">
+                    <Select
+                      label="終了"
                       value={bulkEnd}
                       onChange={(e) => setBulkEnd(e.target.value)}
-                      className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm"
-                    >
-                      {TIME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      options={TIME_OPTIONS}
+                    />
+                  </div>
                   <Button variant="secondary" onClick={applyBulkSettings}>
                     適用
                   </Button>
