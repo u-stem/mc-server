@@ -90,4 +90,50 @@ describe('isWithinSchedule', () => {
     const date = new Date('2026-02-01T15:00:00+09:00');
     expect(isWithinSchedule(baseSchedule, date)).toBe(true);
   });
+
+  describe('日をまたぐスケジュール', () => {
+    const crossMidnightSchedule: ServerSchedule = {
+      enabled: true,
+      timezone: 'Asia/Tokyo',
+      weeklySchedule: {
+        0: { enabled: false, startTime: '20:00', endTime: '23:00' }, // Sunday
+        1: { enabled: false, startTime: '20:00', endTime: '23:00' }, // Monday
+        2: { enabled: false, startTime: '20:00', endTime: '23:00' }, // Tuesday
+        3: { enabled: false, startTime: '20:00', endTime: '23:00' }, // Wednesday
+        4: { enabled: true, startTime: '24:00', endTime: '01:00' }, // Thursday (24:00-01:00 = Fri 0:00-1:00)
+        5: { enabled: false, startTime: '20:00', endTime: '23:00' }, // Friday
+        6: { enabled: true, startTime: '22:00', endTime: '02:00' }, // Saturday (22:00-02:00)
+      },
+    };
+
+    it('24:00開始のスケジュールが翌日0:00に適用される', () => {
+      // Friday 00:30 JST (should match Thursday's 24:00-01:00)
+      const date = new Date('2026-01-30T00:30:00+09:00');
+      expect(isWithinSchedule(crossMidnightSchedule, date)).toBe(true);
+    });
+
+    it('24:00開始のスケジュールが終了時刻後は適用されない', () => {
+      // Friday 01:30 JST (after Thursday's 24:00-01:00)
+      const date = new Date('2026-01-30T01:30:00+09:00');
+      expect(isWithinSchedule(crossMidnightSchedule, date)).toBe(false);
+    });
+
+    it('日をまたぐスケジュール（22:00-02:00）の開始時刻以降はtrue', () => {
+      // Saturday 23:00 JST
+      const date = new Date('2026-01-31T23:00:00+09:00');
+      expect(isWithinSchedule(crossMidnightSchedule, date)).toBe(true);
+    });
+
+    it('日をまたぐスケジュール（22:00-02:00）の翌日部分もtrue', () => {
+      // Sunday 01:00 JST (should match Saturday's 22:00-02:00)
+      const date = new Date('2026-02-01T01:00:00+09:00');
+      expect(isWithinSchedule(crossMidnightSchedule, date)).toBe(true);
+    });
+
+    it('日をまたぐスケジュール（22:00-02:00）の翌日終了後はfalse', () => {
+      // Sunday 02:30 JST (after Saturday's 22:00-02:00)
+      const date = new Date('2026-02-01T02:30:00+09:00');
+      expect(isWithinSchedule(crossMidnightSchedule, date)).toBe(false);
+    });
+  });
 });

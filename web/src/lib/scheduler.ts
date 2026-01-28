@@ -44,6 +44,49 @@ export function parseTime(time: string): number {
 }
 
 /**
+ * 特定の曜日のスケジュールが現在時刻に該当するかチェック
+ */
+function checkDaySchedule(
+  daySchedule: { enabled: boolean; startTime: string; endTime: string } | undefined,
+  currentMinutes: number,
+  isYesterday: boolean
+): boolean {
+  if (!daySchedule || !daySchedule.enabled) {
+    return false;
+  }
+
+  const startMinutes = parseTime(daySchedule.startTime);
+  const endMinutes = parseTime(daySchedule.endTime);
+
+  if (startMinutes === -1 || endMinutes === -1) {
+    return false;
+  }
+
+  // 24:00開始は0:00として扱う
+  const effectiveStartMinutes = startMinutes === 1440 ? 0 : startMinutes;
+
+  // 日をまたぐスケジュール (例: 22:00 - 02:00 または 24:00 - 01:00)
+  const crossesMidnight = effectiveStartMinutes >= endMinutes || startMinutes === 1440;
+
+  if (isYesterday) {
+    // 前日のスケジュールをチェック: 日をまたいでいる場合のみ、終了時刻未満かどうか
+    if (crossesMidnight) {
+      return currentMinutes < endMinutes;
+    }
+    return false;
+  }
+
+  // 当日のスケジュールをチェック
+  if (crossesMidnight) {
+    // 開始時刻以降（終了時刻未満は翌日に判定される）
+    return currentMinutes >= effectiveStartMinutes;
+  }
+
+  // 通常の場合 (例: 09:00 - 17:00)
+  return currentMinutes >= effectiveStartMinutes && currentMinutes < endMinutes;
+}
+
+/**
  * 指定された日時がスケジュールの稼働時間内かどうかを判定する
  * @param schedule サーバースケジュール設定
  * @param date 判定する日時
@@ -59,20 +102,21 @@ export function isWithinSchedule(schedule: ServerSchedule, date: Date): boolean 
   const dayOfWeek = localTime.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
   const currentMinutes = localTime.getHours() * 60 + localTime.getMinutes();
 
-  const daySchedule = schedule.weeklySchedule[dayOfWeek];
-  if (!daySchedule || !daySchedule.enabled) {
-    return false;
+  // 当日のスケジュールをチェック
+  const todaySchedule = schedule.weeklySchedule[dayOfWeek];
+  if (checkDaySchedule(todaySchedule, currentMinutes, false)) {
+    return true;
   }
 
-  const startMinutes = parseTime(daySchedule.startTime);
-  const endMinutes = parseTime(daySchedule.endTime);
-
-  if (startMinutes === -1 || endMinutes === -1) {
-    return false;
+  // 前日のスケジュールが日をまたいでいる場合をチェック
+  // (例: 木曜24:00-01:00 → 金曜0:00-1:00も有効)
+  const yesterdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const yesterdaySchedule = schedule.weeklySchedule[yesterdayIndex];
+  if (checkDaySchedule(yesterdaySchedule, currentMinutes, true)) {
+    return true;
   }
 
-  // 開始時刻 <= 現在時刻 < 終了時刻
-  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  return false;
 }
 
 /**
