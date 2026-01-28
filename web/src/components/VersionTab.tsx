@@ -13,6 +13,8 @@ interface VersionTabProps {
   currentVersion: string;
   serverType: string;
   onVersionUpdated?: (newVersion: string) => void;
+  /** 'card' = Card wrapper付き (default), 'plain' = wrapper無し */
+  variant?: 'card' | 'plain';
 }
 
 function compareVersions(v1: string, v2: string): number {
@@ -33,6 +35,7 @@ export function VersionTab({
   currentVersion,
   serverType,
   onVersionUpdated,
+  variant = 'card',
 }: VersionTabProps) {
   const { addToast } = useToast();
   const [newVersion, setNewVersion] = useState(currentVersion);
@@ -85,16 +88,10 @@ export function VersionTab({
     }
   };
 
-  return (
+  const content = (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <h3 className="font-semibold">バージョン管理</h3>
-            <p className="text-sm text-gray-400 mt-1">
-              {serverType} {currentVersion}
-            </p>
-          </div>
+      {variant === 'plain' && (
+        <div className="flex justify-end mb-4">
           <Button
             onClick={() => setShowConfirm(true)}
             disabled={!versionChanged || !isValidVersion || updating}
@@ -102,37 +99,62 @@ export function VersionTab({
           >
             バージョンを更新
           </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Input
-              label="新しいバージョン"
-              type="text"
-              value={newVersion}
-              onChange={(e) => setNewVersion(e.target.value)}
-              placeholder="例: 1.21.1"
-              error={newVersion && !isValidVersion ? 'バージョン形式が正しくありません' : undefined}
-            />
+        </div>
+      )}
+      <div className="space-y-4">
+        <Input
+          label="新しいバージョン"
+          type="text"
+          value={newVersion}
+          onChange={(e) => setNewVersion(e.target.value)}
+          placeholder="例: 1.21.1"
+          error={newVersion && !isValidVersion ? 'バージョン形式が正しくありません' : undefined}
+        />
 
-            {isDowngrade && (
-              <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
-                <strong>警告:</strong> ダウングレードしようとしています。
-                ワールドデータに互換性の問題が発生する可能性があります。
-              </div>
-            )}
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={createBackup}
-                onChange={(e) => setCreateBackup(e.target.checked)}
-                className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
-              />
-              <span className="text-sm">更新前にフルバックアップを作成（推奨）</span>
-            </label>
+        {isDowngrade && (
+          <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
+            <strong>警告:</strong> ダウングレードしようとしています。
+            ワールドデータに互換性の問題が発生する可能性があります。
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={createBackup}
+            onChange={(e) => setCreateBackup(e.target.checked)}
+            className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
+          />
+          <span className="text-sm">更新前にフルバックアップを作成（推奨）</span>
+        </label>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {variant === 'plain' ? (
+        content
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <h3 className="font-semibold">バージョン管理</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {serverType} {currentVersion}
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowConfirm(true)}
+              disabled={!versionChanged || !isValidVersion || updating}
+              loading={updating}
+            >
+              バージョンを更新
+            </Button>
+          </CardHeader>
+          <CardContent>{content}</CardContent>
+        </Card>
+      )}
 
       <ConfirmDialog
         open={showConfirm}

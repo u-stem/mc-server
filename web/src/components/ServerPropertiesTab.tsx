@@ -12,13 +12,19 @@ import { useToast } from './Toast';
 interface ServerPropertiesTabProps {
   serverId: string;
   serverRunning?: boolean;
+  /** 'card' = Card wrapper付き (default), 'plain' = wrapper無し */
+  variant?: 'card' | 'plain';
 }
 
 interface ServerProperties {
   [key: string]: string | number | boolean;
 }
 
-export function ServerPropertiesTab({ serverId, serverRunning }: ServerPropertiesTabProps) {
+export function ServerPropertiesTab({
+  serverId,
+  serverRunning,
+  variant = 'card',
+}: ServerPropertiesTabProps) {
   const { addToast } = useToast();
   const [properties, setProperties] = useState<ServerProperties | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,6 +144,63 @@ export function ServerPropertiesTab({ serverId, serverRunning }: ServerPropertie
     (typeof PROPERTY_CATEGORIES)[PropertyCategory],
   ][];
 
+  const content = (
+    <>
+      {variant === 'plain' && (
+        <div className="flex justify-end gap-2 mb-4">
+          {hasChanges && (
+            <Button variant="ghost" onClick={handleReset} disabled={saving}>
+              リセット
+            </Button>
+          )}
+          <Button onClick={handleSave} loading={saving} disabled={!hasChanges}>
+            保存
+          </Button>
+        </div>
+      )}
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">読み込み中...</div>
+      ) : !properties ? (
+        <div className="text-center py-8 text-gray-400">設定を読み込めませんでした</div>
+      ) : (
+        <>
+          {serverRunning && hasChanges && (
+            <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
+              サーバーが起動中です。設定の変更を反映するには再起動が必要です。
+            </div>
+          )}
+
+          <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 overflow-x-auto">
+            {categories.map(([key, category]) => (
+              <button
+                type="button"
+                key={key}
+                onClick={() => setActiveCategory(key)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                  activeCategory === key
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {PROPERTY_CATEGORIES[activeCategory].properties.map((prop) => (
+              <div key={prop.key}>{renderProperty(prop)}</div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  if (variant === 'plain') {
+    return content;
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -156,44 +219,7 @@ export function ServerPropertiesTab({ serverId, serverRunning }: ServerPropertie
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8 text-gray-400">読み込み中...</div>
-        ) : !properties ? (
-          <div className="text-center py-8 text-gray-400">設定を読み込めませんでした</div>
-        ) : (
-          <>
-            {serverRunning && hasChanges && (
-              <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
-                サーバーが起動中です。設定の変更を反映するには再起動が必要です。
-              </div>
-            )}
-
-            <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 overflow-x-auto">
-              {categories.map(([key, category]) => (
-                <button
-                  type="button"
-                  key={key}
-                  onClick={() => setActiveCategory(key)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${
-                    activeCategory === key
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  {category.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {PROPERTY_CATEGORIES[activeCategory].properties.map((prop) => (
-                <div key={prop.key}>{renderProperty(prop)}</div>
-              ))}
-            </div>
-          </>
-        )}
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }

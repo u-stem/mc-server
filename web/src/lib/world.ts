@@ -23,6 +23,7 @@ export interface WorldInfo {
 export interface WorldValidationResult {
   valid: boolean;
   worldFolder?: string;
+  tempDir?: string; // 検証時に展開したディレクトリ（再利用可能）
   error?: string;
 }
 
@@ -100,10 +101,12 @@ async function calculateDirSize(dirPath: string): Promise<number> {
 
 /**
  * アーカイブ内に level.dat が存在するか検証
+ * @param keepTempDir trueの場合、一時ディレクトリを削除せず返す（インポート時の再利用用）
  */
 export async function validateWorldArchive(
   buffer: Buffer,
-  filename: string
+  filename: string,
+  keepTempDir = false
 ): Promise<WorldValidationResult> {
   const tempDir = await fs.mkdtemp(path.join('/tmp', 'world-validate-'));
 
@@ -132,7 +135,7 @@ export async function validateWorldArchive(
       const levelDatPath = path.join(extractDir, dir.name, 'level.dat');
       try {
         await fs.access(levelDatPath);
-        return { valid: true, worldFolder: dir.name };
+        return { valid: true, worldFolder: dir.name, tempDir: keepTempDir ? tempDir : undefined };
       } catch {
         // このディレクトリには level.dat がない
       }
@@ -142,14 +145,16 @@ export async function validateWorldArchive(
     const rootLevelDat = path.join(extractDir, 'level.dat');
     try {
       await fs.access(rootLevelDat);
-      return { valid: true, worldFolder: '' };
+      return { valid: true, worldFolder: '', tempDir: keepTempDir ? tempDir : undefined };
     } catch {
       // ルートにもない
     }
 
     return { valid: false, error: 'level.dat not found in archive' };
   } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
+    if (!keepTempDir) {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -162,48 +167,38 @@ export async function importWorld(
   filename: string,
   overwrite: boolean
 ): Promise<WorldImportResult> {
-  // アーカイブを検証
-  const validation = await validateWorldArchive(buffer, filename);
-  if (!validation.valid) {
+  // アーカイブを検証（展開結果を再利用するためkeepTempDir=true）
+  const validation = await validateWorldArchive(buffer, filename, true);
+  if (!validation.valid || !validation.tempDir) {
     return { success: false, error: validation.error };
   }
 
-  const worldPath = path.join(dataPath, FOLDER_WORLD);
+  const tempDir = validation.tempDir;
 
-  // 既存ワールドをチェック
   try {
-    await fs.access(worldPath);
-    // 既存ワールドが存在する
-    if (!overwrite) {
-      return {
-        success: false,
-        error: '既存のワールドがあります。上書きする場合は overwrite=true を指定してください',
-      };
+    const worldPath = path.join(dataPath, FOLDER_WORLD);
+
+    // 既存ワールドをチェック
+    try {
+      await fs.access(worldPath);
+      // 既存ワールドが存在する
+      if (!overwrite) {
+        return {
+          success: false,
+          error: '既存のワールドがあります。上書きする場合は overwrite=true を指定してください',
+        };
+      }
+
+      // バックアップを作成
+      const timestamp = Date.now();
+      const backupPath = path.join(dataPath, `world.bak.${timestamp}`);
+      await fs.rename(worldPath, backupPath);
+    } catch {
+      // 既存ワールドがない場合は続行
     }
 
-    // バックアップを作成
-    const timestamp = Date.now();
-    const backupPath = path.join(dataPath, `world.bak.${timestamp}`);
-    await fs.rename(worldPath, backupPath);
-  } catch {
-    // 既存ワールドがない場合は続行
-  }
-
-  // 一時ディレクトリにアーカイブを展開
-  const tempDir = await fs.mkdtemp(path.join('/tmp', 'world-import-'));
-
-  try {
-    const archivePath = path.join(tempDir, filename);
-    await fs.writeFile(archivePath, buffer);
-
+    // 検証時に展開済みのディレクトリを使用
     const extractDir = path.join(tempDir, 'extracted');
-    await fs.mkdir(extractDir, { recursive: true });
-
-    if (filename.endsWith('.zip')) {
-      await execFileAsync('unzip', ['-q', archivePath, '-d', extractDir]);
-    } else if (filename.endsWith('.tar.gz')) {
-      await execFileAsync('tar', ['-xzf', archivePath, '-C', extractDir]);
-    }
 
     // ワールドフォルダを world にリネームしてコピー
     const worldFolder = validation.worldFolder || '';

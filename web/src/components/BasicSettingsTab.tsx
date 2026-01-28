@@ -26,6 +26,8 @@ interface BasicSettingsTabProps {
     advancedSettings?: Record<string, unknown>;
   };
   onUpdate?: () => void;
+  /** 'card' = Card wrapper付き (default), 'plain' = wrapper無し */
+  variant?: 'card' | 'plain';
 }
 
 const serverTypes = [
@@ -83,7 +85,12 @@ const serverSchema = z
 
 type FieldErrors = Partial<Record<keyof CreateServerRequest | 'root', string>>;
 
-export function BasicSettingsTab({ serverId, server, onUpdate }: BasicSettingsTabProps) {
+export function BasicSettingsTab({
+  serverId,
+  server,
+  onUpdate,
+  variant = 'card',
+}: BasicSettingsTabProps) {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,6 +198,129 @@ export function BasicSettingsTab({ serverId, server, onUpdate }: BasicSettingsTa
     }
   };
 
+  const content = (
+    <>
+      {variant === 'plain' && (
+        <div className="flex justify-end mb-4">
+          <Button type="submit" form="edit-basic-form" loading={loading}>
+            保存
+          </Button>
+        </div>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm"
+        >
+          {error}
+        </div>
+      )}
+
+      <form id="edit-basic-form" onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="サーバー名"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          error={fieldErrors.name}
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="ゲームポート"
+            name="port"
+            type="number"
+            value={formData.port}
+            onChange={handleChange}
+            min={1024}
+            max={65535}
+            required
+            error={fieldErrors.port}
+          />
+          <Input
+            label="RCONポート"
+            name="rconPort"
+            type="number"
+            value={formData.rconPort}
+            onChange={handleChange}
+            min={1024}
+            max={65535}
+            required
+            error={fieldErrors.rconPort}
+          />
+        </div>
+
+        <Input
+          label="RCONパスワード（変更する場合のみ）"
+          name="rconPassword"
+          type="password"
+          value={formData.rconPassword}
+          onChange={handleChange}
+          placeholder="空欄の場合は変更しません"
+          error={fieldErrors.rconPassword}
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Select
+            label="サーバータイプ"
+            name="type"
+            value={formData.type}
+            onChange={handleChange}
+            options={serverTypes}
+          />
+          <Input
+            label="バージョン"
+            name="version"
+            value={formData.version}
+            onChange={handleChange}
+            placeholder="1.21.1"
+            required
+            error={fieldErrors.version}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Select
+            label="メモリ"
+            name="memory"
+            value={formData.memory}
+            onChange={handleChange}
+            options={memoryOptions}
+          />
+          <Input
+            label="最大プレイヤー数"
+            name="maxPlayers"
+            type="number"
+            value={formData.maxPlayers}
+            onChange={handleChange}
+            min={1}
+            max={100}
+            required
+            error={fieldErrors.maxPlayers}
+          />
+        </div>
+
+        <div className="pt-4 border-t border-gray-700">
+          <PresetSelector
+            selectedPresetId={formData.presetId || 'balanced'}
+            onSelect={handlePresetChange}
+          />
+        </div>
+
+        <AdvancedSettings
+          settings={formData.advancedSettings || {}}
+          baseSettings={currentPresetSettings}
+          onChange={handleAdvancedSettingsChange}
+        />
+      </form>
+    </>
+  );
+
+  if (variant === 'plain') {
+    return content;
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -202,115 +332,7 @@ export function BasicSettingsTab({ serverId, server, onUpdate }: BasicSettingsTa
           保存
         </Button>
       </CardHeader>
-      <CardContent>
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm"
-          >
-            {error}
-          </div>
-        )}
-
-        <form id="edit-basic-form" onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="サーバー名"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            error={fieldErrors.name}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="ゲームポート"
-              name="port"
-              type="number"
-              value={formData.port}
-              onChange={handleChange}
-              min={1024}
-              max={65535}
-              required
-              error={fieldErrors.port}
-            />
-            <Input
-              label="RCONポート"
-              name="rconPort"
-              type="number"
-              value={formData.rconPort}
-              onChange={handleChange}
-              min={1024}
-              max={65535}
-              required
-              error={fieldErrors.rconPort}
-            />
-          </div>
-
-          <Input
-            label="RCONパスワード（変更する場合のみ）"
-            name="rconPassword"
-            type="password"
-            value={formData.rconPassword}
-            onChange={handleChange}
-            placeholder="空欄の場合は変更しません"
-            error={fieldErrors.rconPassword}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="サーバータイプ"
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              options={serverTypes}
-            />
-            <Input
-              label="バージョン"
-              name="version"
-              value={formData.version}
-              onChange={handleChange}
-              placeholder="1.21.1"
-              required
-              error={fieldErrors.version}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="メモリ"
-              name="memory"
-              value={formData.memory}
-              onChange={handleChange}
-              options={memoryOptions}
-            />
-            <Input
-              label="最大プレイヤー数"
-              name="maxPlayers"
-              type="number"
-              value={formData.maxPlayers}
-              onChange={handleChange}
-              min={1}
-              max={100}
-              required
-              error={fieldErrors.maxPlayers}
-            />
-          </div>
-
-          <div className="pt-4 border-t border-gray-700">
-            <PresetSelector
-              selectedPresetId={formData.presetId || 'balanced'}
-              onSelect={handlePresetChange}
-            />
-          </div>
-
-          <AdvancedSettings
-            settings={formData.advancedSettings || {}}
-            baseSettings={currentPresetSettings}
-            onChange={handleAdvancedSettingsChange}
-          />
-        </form>
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }
