@@ -34,6 +34,9 @@ test.describe('サーバー詳細ページ（サーバー存在時）', () => {
     await page.goto('/servers/test-server');
     await expect(page.getByRole('tab', { name: '概要' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'バックアップ' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '基本設定' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'サーバー設定' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'バージョン' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'ヘルプ' })).toBeVisible();
   });
 });

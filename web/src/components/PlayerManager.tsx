@@ -132,7 +132,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleAction('op', player)}
                         loading={loading === 'op'}
                         disabled={loading !== null || !isRunning}
@@ -141,7 +140,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleAction('kick', player)}
                         loading={loading === 'kick'}
                         disabled={loading !== null || !isRunning}
@@ -150,7 +148,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
                       </Button>
                       <Button
                         variant="danger"
-                        size="sm"
                         onClick={() => handleAction('ban', player)}
                         loading={loading === 'ban'}
                         disabled={loading !== null || !isRunning}
@@ -179,7 +176,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
             <div className="flex flex-wrap gap-2 mt-3">
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('op', targetPlayer)}
                 loading={loading === 'op'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -188,7 +184,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('deop', targetPlayer)}
                 loading={loading === 'deop'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -197,7 +192,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => handleAction('pardon', targetPlayer)}
                 loading={loading === 'pardon'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}
@@ -206,7 +200,6 @@ export function PlayerManager({ serverId, isRunning, onlinePlayers }: PlayerMana
               </Button>
               <Button
                 variant="danger"
-                size="sm"
                 onClick={() => handleAction('ban', targetPlayer)}
                 loading={loading === 'ban'}
                 disabled={!targetPlayer.trim() || loading !== null || !isRunning}

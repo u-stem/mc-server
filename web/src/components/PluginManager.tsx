@@ -377,7 +377,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
                     {/* 削除ボタン */}
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => setDeleteTarget(plugin.filename)}
                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                     >
@@ -489,7 +488,6 @@ export function PluginManager({ serverId, serverRunning = false }: PluginManager
                   ) : (
                     <div className="mt-3">
                       <Button
-                        size="sm"
                         variant="secondary"
                         onClick={() => handleInstallRecommended(plugin.id)}
                         loading={installing === plugin.id}

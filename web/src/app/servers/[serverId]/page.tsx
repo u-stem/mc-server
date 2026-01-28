@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useState } from 'react';
 import { BackupManager } from '@/components/BackupManager';
+import { BasicSettingsTab } from '@/components/BasicSettingsTab';
 import { Button } from '@/components/Button';
 import { Card, CardContent, CardHeader } from '@/components/Card';
-import { InlineCode } from '@/components/CodeBlock';
+import { CodeBlock } from '@/components/CodeBlock';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Console } from '@/components/Console';
 import { HelpPage } from '@/components/HelpPage';
@@ -13,12 +15,16 @@ import { Frown } from '@/components/Icons';
 import { ModManager } from '@/components/ModManager';
 import { PlayerManager } from '@/components/PlayerManager';
 import { PluginManager } from '@/components/PluginManager';
+import { ServerPropertiesTab } from '@/components/ServerPropertiesTab';
 import { Spinner } from '@/components/Spinner';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/components/Toast';
+import { VersionTab } from '@/components/VersionTab';
 import { WhitelistManager } from '@/components/WhitelistManager';
+import { WorldImport } from '@/components/WorldImport';
 import { useTailscaleIp } from '@/hooks/useTailscaleIp';
 import {
+  LABEL_BACK,
   LABEL_BACK_TO_DASHBOARD,
   MSG_SERVER_NOT_FOUND,
   MSG_SERVER_NOT_FOUND_DESC,
@@ -30,7 +36,16 @@ interface PageProps {
   params: Promise<{ serverId: string }>;
 }
 
-type TabId = 'overview' | 'console' | 'players' | 'mods' | 'backups' | 'help';
+type TabId =
+  | 'overview'
+  | 'console'
+  | 'players'
+  | 'mods'
+  | 'backups'
+  | 'settings'
+  | 'properties'
+  | 'version'
+  | 'help';
 
 interface Tab {
   id: TabId;
@@ -216,6 +231,9 @@ export default function ServerDetailPage({ params }: PageProps) {
       show: !isBedrock && (showModsTab || showPluginsTab),
     },
     { id: 'backups', label: 'バックアップ' },
+    { id: 'settings', label: '基本設定', show: !isBedrock },
+    { id: 'properties', label: 'サーバー設定', show: !isBedrock },
+    { id: 'version', label: 'バージョン', show: !isBedrock },
     { id: 'help', label: 'ヘルプ' },
   ];
   const tabs = allTabs.filter((tab) => tab.show !== false);
@@ -223,54 +241,50 @@ export default function ServerDetailPage({ params }: PageProps) {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-            ← 戻る
-          </Button>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold">{server.name}</h2>
-              <StatusBadge running={server.status.running} />
-            </div>
-            <p className="text-gray-400 text-sm mt-1">
-              {server.type} {server.version}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2 self-end sm:self-auto">
-          <Button variant="secondary" onClick={() => router.push(`/servers/${serverId}/edit`)}>
-            設定
-          </Button>
-          {server.status.running ? (
-            <Button
-              variant="danger"
-              onClick={() => setShowStopConfirm(true)}
-              loading={actionLoading === 'stop'}
-              disabled={actionLoading !== null}
+      <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-sm text-gray-400 hover:text-white inline-flex items-center"
             >
-              停止
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="primary"
-                onClick={handleStart}
-                loading={actionLoading === 'start'}
-                disabled={actionLoading !== null}
-              >
-                起動
-              </Button>
+              {LABEL_BACK}
+            </Link>
+            <span className="text-gray-600">|</span>
+            <h2 className="text-xl font-bold">サーバー詳細</h2>
+            <StatusBadge running={server.status.running} />
+          </div>
+          <div className="flex gap-2 self-end sm:self-auto">
+            {server.status.running ? (
               <Button
                 variant="danger"
-                onClick={() => setShowDeleteConfirm(true)}
-                loading={actionLoading === 'delete'}
+                onClick={() => setShowStopConfirm(true)}
+                loading={actionLoading === 'stop'}
                 disabled={actionLoading !== null}
               >
-                削除
+                停止
               </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  variant="primary"
+                  onClick={handleStart}
+                  loading={actionLoading === 'start'}
+                  disabled={actionLoading !== null}
+                >
+                  起動
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  loading={actionLoading === 'delete'}
+                  disabled={actionLoading !== null}
+                >
+                  削除
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -312,7 +326,7 @@ export default function ServerDetailPage({ params }: PageProps) {
               className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-green-500 text-green-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
               }`}
               aria-selected={activeTab === tab.id}
               aria-controls={`tabpanel-${tab.id}`}
@@ -375,38 +389,42 @@ export default function ServerDetailPage({ params }: PageProps) {
                     </div>
                   )}
                   {tailscaleIp && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Tailscale</span>
-                      <InlineCode>{`${tailscaleIp}:${server.port}`}</InlineCode>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Tailscale</p>
+                      <CodeBlock>{`${tailscaleIp}:${server.port}`}</CodeBlock>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400">ローカル</span>
-                    <InlineCode copyable={false}>{`localhost:${server.port}`}</InlineCode>
+                    <span className="text-gray-300">localhost:{server.port}</span>
                   </div>
                   {!isBedrock && (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">RCONポート</span>
-                      <InlineCode copyable={false}>{`${server.rconPort}`}</InlineCode>
+                      <span className="text-gray-300">{server.rconPort}</span>
                     </div>
                   )}
                   {server.geyserPort && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">GeyserMC (UDP)</span>
-                      <InlineCode copyable={false}>{`${server.geyserPort}`}</InlineCode>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">GeyserMC (UDP)</p>
+                      <CodeBlock>{`${server.geyserPort}`}</CodeBlock>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* サーバー設定 */}
+            {/* サーバー情報 */}
             <Card>
               <CardHeader>
-                <h3 className="font-semibold">サーバー設定</h3>
+                <h3 className="font-semibold">サーバー情報</h3>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">サーバー名</span>
+                    <span className="font-medium">{server.name}</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400">エディション</span>
                     <span className="font-medium">
@@ -570,9 +588,47 @@ export default function ServerDetailPage({ params }: PageProps) {
           id="tabpanel-backups"
           role="tabpanel"
           aria-labelledby="tab-backups"
-          className={activeTab === 'backups' ? '' : 'hidden'}
+          className={activeTab === 'backups' ? 'space-y-6' : 'hidden'}
         >
           <BackupManager serverId={serverId} />
+          <WorldImport serverId={serverId} serverRunning={server.status.running} />
+        </div>
+
+        {/* 基本設定タブ */}
+        <div
+          id="tabpanel-settings"
+          role="tabpanel"
+          aria-labelledby="tab-settings"
+          className={activeTab === 'settings' ? '' : 'hidden'}
+        >
+          <BasicSettingsTab serverId={serverId} server={server} onUpdate={fetchServer} />
+        </div>
+
+        {/* サーバー設定タブ */}
+        <div
+          id="tabpanel-properties"
+          role="tabpanel"
+          aria-labelledby="tab-properties"
+          className={activeTab === 'properties' ? '' : 'hidden'}
+        >
+          <ServerPropertiesTab serverId={serverId} serverRunning={server.status.running} />
+        </div>
+
+        {/* バージョンタブ */}
+        <div
+          id="tabpanel-version"
+          role="tabpanel"
+          aria-labelledby="tab-version"
+          className={activeTab === 'version' ? '' : 'hidden'}
+        >
+          <VersionTab
+            serverId={serverId}
+            currentVersion={server.version}
+            serverType={server.type}
+            onVersionUpdated={(newVersion) => {
+              setServer((prev) => (prev ? { ...prev, version: newVersion } : null));
+            }}
+          />
         </div>
 
         {/* ヘルプタブ */}

@@ -7,6 +7,7 @@ export const MSG_LOADING = '読み込み中...';
 export const MSG_UNKNOWN_ERROR = 'Unknown error';
 
 // ボタンラベル
+export const LABEL_BACK = '← 戻る';
 export const LABEL_DELETE = '削除';
 export const LABEL_ADD = '追加';
 export const LABEL_SAVE = '保存';

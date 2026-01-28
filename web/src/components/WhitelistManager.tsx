@@ -157,7 +157,6 @@ export function WhitelistManager({ serverId }: WhitelistManagerProps) {
                   </div>
                   <Button
                     variant="danger"
-                    size="sm"
                     onClick={() => setPlayerToRemove(player.name)}
                     loading={removing === player.name}
                     disabled={removing !== null}

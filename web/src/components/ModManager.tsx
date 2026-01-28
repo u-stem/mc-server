@@ -287,7 +287,6 @@ export function ModManager({ serverId, serverRunning = false }: ModManagerProps)
                     {/* 削除ボタン */}
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => setDeleteTarget(mod.filename)}
                       className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                     >

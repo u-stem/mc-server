@@ -167,7 +167,7 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
             />
             自動更新
           </label>
-          <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={!isRunning}>
+          <Button variant="ghost" onClick={fetchLogs} disabled={!isRunning}>
             更新
           </Button>
         </div>

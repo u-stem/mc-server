@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useState } from 'react';
 import { z } from 'zod';
+import { Accordion } from '@/components/Accordion';
 import { AdvancedSettings } from '@/components/AdvancedSettings';
 import { Button } from '@/components/Button';
-import { Card, CardContent, CardHeader } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Frown } from '@/components/Icons';
 import { Input } from '@/components/Input';
@@ -14,6 +15,7 @@ import { Select } from '@/components/Select';
 import { Spinner } from '@/components/Spinner';
 import { useToast } from '@/components/Toast';
 import {
+  LABEL_BACK,
   LABEL_BACK_TO_DASHBOARD,
   MSG_LOADING,
   MSG_SERVER_NOT_FOUND,
@@ -33,8 +35,6 @@ import { DEFAULT_PRESET_SETTINGS, getPresetById, PROPERTY_CATEGORIES } from '@/t
 interface PageProps {
   params: Promise<{ serverId: string }>;
 }
-
-type TabId = 'basic' | 'properties' | 'version';
 
 const serverTypes = [
   { value: 'FABRIC', label: 'Fabric', group: 'MOD' },
@@ -112,7 +112,6 @@ export default function EditServerPage({ params }: PageProps) {
   const { addToast } = useToast();
   const { serverId } = use(params);
 
-  const [activeTab, setActiveTab] = useState<TabId>('basic');
   const [server, setServer] = useState<ServerDetails | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -431,12 +430,6 @@ export default function EditServerPage({ params }: PageProps) {
     );
   }
 
-  const tabs = [
-    { id: 'basic' as const, label: '基本設定' },
-    { id: 'properties' as const, label: 'サーバー設定' },
-    { id: 'version' as const, label: 'バージョン' },
-  ];
-
   const categories = Object.entries(PROPERTY_CATEGORIES) as [
     PropertyCategory,
     (typeof PROPERTY_CATEGORIES)[PropertyCategory],
@@ -445,48 +438,28 @@ export default function EditServerPage({ params }: PageProps) {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push(`/servers/${serverId}`)}>
-            ← 戻る
-          </Button>
-          <h2 className="text-2xl font-bold">サーバー設定</h2>
+      <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/servers/${serverId}`}
+            className="text-sm text-gray-400 hover:text-white inline-flex items-center"
+          >
+            {LABEL_BACK}
+          </Link>
+          <span className="text-gray-600">|</span>
+          <h2 className="text-xl font-bold">サーバー編集</h2>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-700 mb-6">
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              type="button"
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-green-500 text-green-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Basic Settings Tab */}
-      {activeTab === 'basic' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <h3 className="font-semibold">基本設定</h3>
-              <p className="text-sm text-gray-400 mt-1">サーバーの基本設定とプリセット</p>
+      <div className="space-y-4">
+        {/* 基本設定 */}
+        <Accordion title="基本設定" defaultOpen>
+          <div className="p-4">
+            <div className="flex justify-end mb-4">
+              <Button type="submit" form="edit-basic-form" loading={loading}>
+                保存
+              </Button>
             </div>
-            <Button type="submit" form="edit-basic-form" loading={loading}>
-              保存
-            </Button>
-          </CardHeader>
-          <CardContent>
             {error && (
               <div
                 role="alert"
@@ -583,19 +556,13 @@ export default function EditServerPage({ params }: PageProps) {
                 onChange={handleAdvancedSettingsChange}
               />
             </form>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </Accordion>
 
-      {/* Properties Tab */}
-      {activeTab === 'properties' && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <h3 className="font-semibold">サーバー設定</h3>
-              <p className="text-sm text-gray-400 mt-1">server.properties の設定</p>
-            </div>
-            <div className="flex gap-2">
+        {/* サーバー設定 */}
+        <Accordion title="サーバー設定（server.properties）">
+          <div className="p-4">
+            <div className="flex justify-end gap-2 mb-4">
               {propertiesHasChanges && (
                 <Button variant="ghost" onClick={handlePropertiesReset} disabled={propertiesSaving}>
                   リセット
@@ -609,8 +576,6 @@ export default function EditServerPage({ params }: PageProps) {
                 保存
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
             {propertiesLoading ? (
               <div className="text-center py-8 text-gray-400">{MSG_LOADING}</div>
             ) : !properties ? (
@@ -647,61 +612,55 @@ export default function EditServerPage({ params }: PageProps) {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </Accordion>
 
-      {/* Version Tab */}
-      {activeTab === 'version' && server && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <h3 className="font-semibold">バージョン管理</h3>
-              <p className="text-sm text-gray-400 mt-1">
-                {server.type} {server.version}
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowVersionConfirm(true)}
-              disabled={!versionChanged || !isValidVersion || versionUpdating}
-              loading={versionUpdating}
-            >
-              バージョンを更新
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Input
-                label="新しいバージョン"
-                type="text"
-                value={newVersion}
-                onChange={(e) => setNewVersion(e.target.value)}
-                placeholder="例: 1.21.1"
-                error={
-                  newVersion && !isValidVersion ? 'バージョン形式が正しくありません' : undefined
-                }
-              />
-
-              {isDowngrade && (
-                <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
-                  <strong>警告:</strong> ダウングレードしようとしています。
-                  ワールドデータに互換性の問題が発生する可能性があります。
-                </div>
-              )}
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={createBackup}
-                  onChange={(e) => setCreateBackup(e.target.checked)}
-                  className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
+        {/* バージョン */}
+        {server && (
+          <Accordion title={`バージョン管理（${server.type} ${server.version}）`}>
+            <div className="p-4">
+              <div className="flex justify-end mb-4">
+                <Button
+                  onClick={() => setShowVersionConfirm(true)}
+                  disabled={!versionChanged || !isValidVersion || versionUpdating}
+                  loading={versionUpdating}
+                >
+                  バージョンを更新
+                </Button>
+              </div>
+              <div className="space-y-4">
+                <Input
+                  label="新しいバージョン"
+                  type="text"
+                  value={newVersion}
+                  onChange={(e) => setNewVersion(e.target.value)}
+                  placeholder="例: 1.21.1"
+                  error={
+                    newVersion && !isValidVersion ? 'バージョン形式が正しくありません' : undefined
+                  }
                 />
-                <span className="text-sm">更新前にフルバックアップを作成（推奨）</span>
-              </label>
+
+                {isDowngrade && (
+                  <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
+                    <strong>警告:</strong> ダウングレードしようとしています。
+                    ワールドデータに互換性の問題が発生する可能性があります。
+                  </div>
+                )}
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createBackup}
+                    onChange={(e) => setCreateBackup(e.target.checked)}
+                    className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
+                  />
+                  <span className="text-sm">更新前にフルバックアップを作成（推奨）</span>
+                </label>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </Accordion>
+        )}
+      </div>
 
       <ConfirmDialog
         open={showVersionConfirm}
