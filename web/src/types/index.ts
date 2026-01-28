@@ -12,11 +12,12 @@ export {
   mergePresetSettings,
   SERVER_PRESETS,
 } from './presets';
-
 // Property types
 export type { PropertyCategoryDefinition, PropertyDefinition } from './properties';
-
 export { PROPERTY_CATEGORIES, type PropertyCategory } from './properties';
+// Schedule types
+export type { DaySchedule, ServerSchedule } from './schedule';
+export { DEFAULT_DAY_SCHEDULE, DEFAULT_SERVER_SCHEDULE } from './schedule';
 export type {
   BackupInfo,
   CreateServerRequest,
