@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { listPlugins, uploadPlugin } from '@/lib/plugins';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, PluginInfo } from '@/types';
 
 interface RouteParams {
@@ -16,30 +15,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<PluginInfo[]>>;
     }
 
     const plugins = await listPlugins(id);
 
-    return NextResponse.json({
-      success: true,
-      data: plugins,
-    });
+    return successResponse(plugins);
   } catch (error) {
     console.error('Failed to list plugins:', error);
-    return NextResponse.json({ success: false, error: 'Failed to list plugins' }, { status: 500 });
+    return errorResponse('Failed to list plugins') as NextResponse<ApiResponse<PluginInfo[]>>;
   }
 }
 
@@ -51,19 +37,9 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // multipart/form-data を解析
@@ -71,7 +47,7 @@ export async function POST(
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
+      return errorResponse('No file provided', 400) as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // ファイル名の取得
@@ -79,10 +55,9 @@ export async function POST(
 
     // .jar 拡張子のチェック
     if (!filename.toLowerCase().endsWith('.jar')) {
-      return NextResponse.json(
-        { success: false, error: 'Only .jar files are allowed' },
-        { status: 400 }
-      );
+      return errorResponse('Only .jar files are allowed', 400) as NextResponse<
+        ApiResponse<PluginInfo>
+      >;
     }
 
     // ファイルをバッファに変換
@@ -91,16 +66,12 @@ export async function POST(
 
     const pluginInfo = await uploadPlugin(id, filename, buffer);
 
-    return NextResponse.json({
-      success: true,
-      data: pluginInfo,
-    });
+    return successResponse(pluginInfo);
   } catch (error) {
     console.error('Failed to upload plugin:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to upload plugin: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to upload plugin: ${errorMessage}`) as NextResponse<
+      ApiResponse<PluginInfo>
+    >;
   }
 }

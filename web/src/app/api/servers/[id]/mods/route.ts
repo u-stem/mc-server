@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { listMods, uploadMod } from '@/lib/mods';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, ModInfo } from '@/types';
 
 interface RouteParams {
@@ -16,30 +15,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ModInfo[]>>;
     }
 
     const mods = await listMods(id);
 
-    return NextResponse.json({
-      success: true,
-      data: mods,
-    });
+    return successResponse(mods);
   } catch (error) {
     console.error('Failed to list mods:', error);
-    return NextResponse.json({ success: false, error: 'Failed to list mods' }, { status: 500 });
+    return errorResponse('Failed to list mods') as NextResponse<ApiResponse<ModInfo[]>>;
   }
 }
 
@@ -51,19 +37,9 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ModInfo>>;
     }
 
     // multipart/form-data を解析
@@ -71,7 +47,7 @@ export async function POST(
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
+      return errorResponse('No file provided', 400) as NextResponse<ApiResponse<ModInfo>>;
     }
 
     // ファイル名の取得
@@ -79,10 +55,9 @@ export async function POST(
 
     // .jar 拡張子のチェック
     if (!filename.toLowerCase().endsWith('.jar')) {
-      return NextResponse.json(
-        { success: false, error: 'Only .jar files are allowed' },
-        { status: 400 }
-      );
+      return errorResponse('Only .jar files are allowed', 400) as NextResponse<
+        ApiResponse<ModInfo>
+      >;
     }
 
     // ファイルをバッファに変換
@@ -91,16 +66,12 @@ export async function POST(
 
     const modInfo = await uploadMod(id, filename, buffer);
 
-    return NextResponse.json({
-      success: true,
-      data: modInfo,
-    });
+    return successResponse(modInfo);
   } catch (error) {
     console.error('Failed to upload mod:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to upload mod: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to upload mod: ${errorMessage}`) as NextResponse<
+      ApiResponse<ModInfo>
+    >;
   }
 }

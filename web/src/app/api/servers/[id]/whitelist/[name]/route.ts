@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { removeFromWhitelist } from '@/lib/rcon';
-import { PlayerNameSchema, ServerIdSchema } from '@/lib/validation';
+import { PlayerNameSchema } from '@/lib/validation';
 import type { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -16,41 +16,22 @@ export async function DELETE(
   try {
     const { id, name } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response;
     }
 
     // プレイヤー名をバリデーション
     const nameResult = PlayerNameSchema.safeParse(name);
     if (!nameResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid player name format' },
-        { status: 400 }
-      );
+      return errorResponse('Invalid player name format', 400);
     }
 
-    const server = await getServer(id);
+    const rconResult = await removeFromWhitelist(id, name);
 
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
-    }
-
-    const result = await removeFromWhitelist(id, name);
-
-    return NextResponse.json({
-      success: true,
-      data: { message: result },
-    });
+    return successResponse({ message: rconResult });
   } catch (error) {
     console.error('Failed to remove from whitelist:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to remove player from whitelist' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to remove player from whitelist');
   }
 }

@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import {
   getServerProperties,
   type ServerProperties,
   updateServerProperties,
 } from '@/lib/serverProperties';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -20,32 +19,20 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ServerProperties>>;
     }
 
     const properties = await getServerProperties(id);
 
-    return NextResponse.json({
-      success: true,
-      data: properties,
-    });
+    return successResponse(properties);
   } catch (error) {
     console.error('Failed to get server properties:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to get properties: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to get properties: ${errorMessage}`) as NextResponse<
+      ApiResponse<ServerProperties>
+    >;
   }
 }
 
@@ -57,17 +44,9 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ServerProperties>>;
     }
 
     const body = await request.json();
@@ -83,16 +62,12 @@ export async function PUT(
 
     const properties = await updateServerProperties(id, updates);
 
-    return NextResponse.json({
-      success: true,
-      data: properties,
-    });
+    return successResponse(properties);
   } catch (error) {
     console.error('Failed to update server properties:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to update properties: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to update properties: ${errorMessage}`) as NextResponse<
+      ApiResponse<ServerProperties>
+    >;
   }
 }

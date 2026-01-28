@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { deleteMod, toggleMod } from '@/lib/mods';
-import { isValidFileName, ServerIdSchema } from '@/lib/validation';
+import { isValidFileName } from '@/lib/validation';
 import type { ApiResponse, ModInfo } from '@/types';
 
 interface RouteParams {
@@ -16,47 +16,32 @@ export async function DELETE(
   try {
     const { id, filename } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<{ deleted: boolean }>>;
     }
 
     // ファイル名をバリデーション
     const decodedFilename = decodeURIComponent(filename);
     if (!isValidFileName(decodedFilename.replace('.disabled', ''))) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid filename format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+      return errorResponse('Invalid filename format', 400) as NextResponse<
+        ApiResponse<{ deleted: boolean }>
+      >;
     }
 
     const deleted = await deleteMod(id, decodedFilename);
 
     if (!deleted) {
-      return NextResponse.json({ success: false, error: 'Mod not found' }, { status: 404 });
+      return errorResponse('Mod not found', 404) as NextResponse<ApiResponse<{ deleted: boolean }>>;
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { deleted: true },
-    });
+    return successResponse({ deleted: true });
   } catch (error) {
     console.error('Failed to delete mod:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to delete mod: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to delete mod: ${errorMessage}`) as NextResponse<
+      ApiResponse<{ deleted: boolean }>
+    >;
   }
 }
 
@@ -68,42 +53,25 @@ export async function PATCH(
   try {
     const { id, filename } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<ModInfo>>;
     }
 
     // ファイル名をバリデーション
     const decodedFilename = decodeURIComponent(filename);
     if (!isValidFileName(decodedFilename.replace('.disabled', ''))) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid filename format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+      return errorResponse('Invalid filename format', 400) as NextResponse<ApiResponse<ModInfo>>;
     }
 
     const modInfo = await toggleMod(id, decodedFilename);
 
-    return NextResponse.json({
-      success: true,
-      data: modInfo,
-    });
+    return successResponse(modInfo);
   } catch (error) {
     console.error('Failed to toggle mod:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to toggle mod: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to toggle mod: ${errorMessage}`) as NextResponse<
+      ApiResponse<ModInfo>
+    >;
   }
 }

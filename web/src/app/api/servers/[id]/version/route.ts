@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import type { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { createFullBackup } from '@/lib/backup';
-import { getServer, updateServer } from '@/lib/config';
+import { updateServer } from '@/lib/config';
 import { getServerStatus, recreateServer, stopServer } from '@/lib/docker';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, VersionUpdateResponse } from '@/types';
 
 interface RouteParams {
@@ -25,19 +25,9 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<VersionUpdateResponse>>;
     }
 
     // リクエストボディをパース
@@ -45,26 +35,19 @@ export async function PUT(
     const parseResult = VersionUpdateSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: parseResult.error.issues[0].message,
-        },
-        { status: 400 }
-      );
+      return errorResponse(parseResult.error.issues[0].message, 400) as NextResponse<
+        ApiResponse<VersionUpdateResponse>
+      >;
     }
 
     const { version: newVersion, createBackup: shouldCreateBackup } = parseResult.data;
-    const previousVersion = server.version;
+    const previousVersion = result.server.version;
 
     // 同じバージョンへの更新は無視
     if (newVersion === previousVersion) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          previousVersion,
-          newVersion,
-        },
+      return successResponse({
+        previousVersion,
+        newVersion,
       });
     }
 
@@ -110,20 +93,16 @@ export async function PUT(
       console.warn('Server may not have started properly after version update');
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        previousVersion,
-        newVersion,
-        backupPath,
-      },
+    return successResponse({
+      previousVersion,
+      newVersion,
+      backupPath,
     });
   } catch (error) {
     console.error('Failed to update version:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to update version: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to update version: ${errorMessage}`) as NextResponse<
+      ApiResponse<VersionUpdateResponse>
+    >;
   }
 }

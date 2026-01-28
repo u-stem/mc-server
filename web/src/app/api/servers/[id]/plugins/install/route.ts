@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServer } from '@/lib/config';
+import type { NextResponse } from 'next/server';
+import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { downloadPluginFromModrinth, RECOMMENDED_PLUGINS } from '@/lib/pluginCatalog';
 import { uploadPlugin } from '@/lib/plugins';
-import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, PluginInfo } from '@/types';
 
 interface RouteParams {
@@ -17,19 +16,9 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // サーバーIDをバリデーション
-    const idResult = ServerIdSchema.safeParse(id);
-    if (!idResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid server ID format' },
-        { status: 400 }
-      );
-    }
-
-    const server = await getServer(id);
-
-    if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    const result = await validateAndGetServer(id);
+    if (!result.success) {
+      return result.response as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // リクエストボディからプラグインIDを取得
@@ -37,44 +26,38 @@ export async function POST(
     const { pluginId } = body as { pluginId: string };
 
     if (!pluginId) {
-      return NextResponse.json({ success: false, error: 'Plugin ID is required' }, { status: 400 });
+      return errorResponse('Plugin ID is required', 400) as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // おすすめプラグインリストから検索
     const recommendedPlugin = RECOMMENDED_PLUGINS.find((p) => p.id === pluginId);
     if (!recommendedPlugin) {
-      return NextResponse.json(
-        { success: false, error: 'Plugin not found in recommended list' },
-        { status: 404 }
-      );
+      return errorResponse('Plugin not found in recommended list', 404) as NextResponse<
+        ApiResponse<PluginInfo>
+      >;
     }
 
     // Modrinthからダウンロード
     const downloadResult = await downloadPluginFromModrinth(
       recommendedPlugin.modrinthId,
-      server.version
+      result.server.version
     );
 
     if (!downloadResult) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to download plugin from Modrinth' },
-        { status: 500 }
-      );
+      return errorResponse('Failed to download plugin from Modrinth') as NextResponse<
+        ApiResponse<PluginInfo>
+      >;
     }
 
     // プラグインをインストール
     const pluginInfo = await uploadPlugin(id, downloadResult.filename, downloadResult.buffer);
 
-    return NextResponse.json({
-      success: true,
-      data: pluginInfo,
-    });
+    return successResponse(pluginInfo);
   } catch (error) {
     console.error('Failed to install plugin:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { success: false, error: `Failed to install plugin: ${errorMessage}` },
-      { status: 500 }
-    );
+    return errorResponse(`Failed to install plugin: ${errorMessage}`) as NextResponse<
+      ApiResponse<PluginInfo>
+    >;
   }
 }
