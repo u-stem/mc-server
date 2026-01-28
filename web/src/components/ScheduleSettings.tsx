@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ApiResponse, DaySchedule, ServerSchedule } from '@/types';
 import { DEFAULT_SERVER_SCHEDULE } from '@/types';
-import { Alert } from './Alert';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader } from './Card';
 import { Select } from './Select';
@@ -246,46 +245,54 @@ export function ScheduleSettings({ serverId }: ScheduleSettingsProps) {
 
               <div className="p-4 bg-gray-800 rounded-lg">
                 <p className="text-sm text-gray-400 mb-3">一括設定</p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="w-36">
-                    <Select
-                      label="対象"
-                      value={bulkTarget}
-                      onChange={(e) => setBulkTarget(e.target.value as typeof bulkTarget)}
-                      options={[
-                        { value: 'weekdays', label: '平日（月〜金）' },
-                        { value: 'weekend', label: '週末（土日）' },
-                        { value: 'all', label: '全曜日' },
-                      ]}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Select
-                      label="開始"
+                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-center max-w-md">
+                  <span className="text-sm text-gray-300">対象</span>
+                  <Select
+                    value={bulkTarget}
+                    onChange={(e) => setBulkTarget(e.target.value as typeof bulkTarget)}
+                    options={[
+                      { value: 'weekdays', label: '平日（月〜金）' },
+                      { value: 'weekend', label: '週末（土日）' },
+                      { value: 'all', label: '全曜日' },
+                    ]}
+                  />
+                  <span className="text-sm text-gray-300">時間</span>
+                  <div className="flex items-center gap-2">
+                    <select
                       value={bulkStart}
                       onChange={(e) => setBulkStart(e.target.value)}
-                      options={TIME_OPTIONS}
-                    />
-                  </div>
-                  <span className="text-gray-500 pb-2">〜</span>
-                  <div className="w-24">
-                    <Select
-                      label="終了"
+                      className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm"
+                    >
+                      {TIME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-gray-500">〜</span>
+                    <select
                       value={bulkEnd}
                       onChange={(e) => setBulkEnd(e.target.value)}
-                      options={TIME_OPTIONS}
-                    />
+                      className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm"
+                    >
+                      {TIME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  <div />
                   <Button variant="secondary" onClick={applyBulkSettings}>
                     適用
                   </Button>
                 </div>
               </div>
 
-              <Alert variant="info">
+              <p className="text-sm text-gray-400">
                 スケジュールが有効な場合、設定した時間帯にサーバーが自動的に起動・停止します。
                 手動での操作は次のスケジュールチェック時に上書きされます。
-              </Alert>
+              </p>
             </>
           )}
         </div>
