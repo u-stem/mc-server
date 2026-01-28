@@ -169,36 +169,103 @@ export function HelpPage({ server }: HelpPageProps) {
               </div>
 
               {/* クライアント側の設定 */}
-              <div>
-                <SectionHeading>ゲスト側の準備</SectionHeading>
-                <p className="text-sm text-gray-400 mb-3">
-                  招待メールのリンクからアカウントを作成してください。tailscale.comから直接登録すると別ネットワークになります。
-                </p>
-                <StepList>
-                  <Step number={1}>招待メールのリンクからアカウント作成</Step>
-                  <Step number={2}>Tailscaleをインストールしてログイン</Step>
-                  <Step number={3}>「Connected」を確認</Step>
-                  <Step number={4}>
-                    Minecraftで接続
-                    <CodeBlock>
-                      {tailscaleIp
-                        ? `${tailscaleIp}:${server.port}`
-                        : `[サーバーのTailscale IP]:${server.port}`}
-                    </CodeBlock>
-                  </Step>
-                </StepList>
-              </div>
+              {isBedrock ? (
+                <div className="space-y-4">
+                  <SectionHeading>ゲスト側の準備</SectionHeading>
+                  <p className="text-sm text-gray-400 mb-3">
+                    招待メールのリンクからアカウントを作成してください。tailscale.comから直接登録すると別ネットワークになります。
+                  </p>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-300 mb-2">
+                      スマートフォン / タブレット / Windows
+                    </p>
+                    <StepList>
+                      <Step number={1}>招待メールのリンクからアカウント作成</Step>
+                      <Step number={2}>Tailscaleをインストールしてログイン</Step>
+                      <Step number={3}>「Connected」を確認</Step>
+                      <Step number={4}>
+                        Minecraft →「遊ぶ」→「サーバー」→「サーバーを追加」
+                        <CodeBlock>
+                          {`アドレス: ${tailscaleIp || '[サーバーIP]'}\nポート: ${server.port}`}
+                        </CodeBlock>
+                      </Step>
+                    </StepList>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-300 mb-2">
+                      Nintendo Switch / PlayStation / Xbox
+                    </p>
+                    <p className="text-sm text-gray-400 mb-2">
+                      コンソール版はTailscaleをインストールできないため、別の方法が必要です。
+                    </p>
+                    <div className="space-y-2 text-sm text-gray-400">
+                      <div className="p-3 bg-gray-800/50 rounded-lg">
+                        <p className="font-medium text-gray-300">BedrockConnect（DNS方式）</p>
+                        <p className="mt-1">
+                          コンソールのDNS設定を変更し、「特集サーバー」経由で接続。
+                          ホスト側でTailscaleサブネットルーターの設定が必要です。
+                        </p>
+                      </div>
+                      <div className="p-3 bg-gray-800/50 rounded-lg">
+                        <p className="font-medium text-gray-300">BedrockTogether（PS/Xboxのみ）</p>
+                        <p className="mt-1">
+                          ゲストのスマートフォンにTailscale + BedrockTogetherアプリをインストール。
+                          コンソールとスマホを同じWi-Fiに接続し、LANゲームとして表示させます。
+                        </p>
+                        <Note>Nintendo Switchは非対応</Note>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <SectionHeading>ゲスト側の準備</SectionHeading>
+                  <p className="text-sm text-gray-400 mb-3">
+                    招待メールのリンクからアカウントを作成してください。tailscale.comから直接登録すると別ネットワークになります。
+                  </p>
+                  <StepList>
+                    <Step number={1}>招待メールのリンクからアカウント作成</Step>
+                    <Step number={2}>Tailscaleをインストールしてログイン</Step>
+                    <Step number={3}>「Connected」を確認</Step>
+                    <Step number={4}>
+                      Minecraft →「マルチプレイ」→「サーバーを追加」
+                      <CodeBlock>
+                        {tailscaleIp
+                          ? `${tailscaleIp}:${server.port}`
+                          : `[サーバーのTailscale IP]:${server.port}`}
+                      </CodeBlock>
+                    </Step>
+                  </StepList>
+                </div>
+              )}
 
               {/* ホワイトリスト */}
               <div>
                 <SectionHeading>ホワイトリストに追加</SectionHeading>
-                <p className="text-sm text-gray-400">
-                  ゲストの<strong>Javaプロファイル名</strong>をホワイトリストに追加してください。
-                </p>
-                <Note>
-                  XboxゲーマータグではなくJava版専用の名前です。minecraft.net → プロフィール
-                  →「Java版Minecraftのプロフィール名」で確認できます。
-                </Note>
+                {isBedrock ? (
+                  <>
+                    <p className="text-sm text-gray-400">
+                      ゲストのXboxゲーマータグ（またはMicrosoftアカウント名）をホワイトリストに追加してください。
+                    </p>
+                    <Note>
+                      GeyserMC +
+                      Floodgate使用時は、プレイヤー名の前にプレフィックス（通常「.」）が付きます。
+                      例: .PlayerName
+                    </Note>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-400">
+                      ゲストのJavaプロファイル名をホワイトリストに追加してください。
+                    </p>
+                    <Note>
+                      XboxゲーマータグではなくJava版専用の名前です。minecraft.net → プロフィール
+                      →「Java版Minecraftのプロフィール名」で確認できます。
+                    </Note>
+                  </>
+                )}
               </div>
 
               {/* トラブルシューティング */}
