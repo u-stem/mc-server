@@ -7,6 +7,8 @@ updates:
       interval: "monthly"
       time: "09:00"
       timezone: "Asia/Tokyo"
+    assignees:
+      - "u-stem"
     open-pull-requests-limit: 10
     groups:
       # 開発依存関係をグループ化
@@ -31,5 +33,7 @@ updates:
       interval: "monthly"
       time: "09:00"
       timezone: "Asia/Tokyo"
+    assignees:
+      - "u-stem"
     commit-message:
       prefix: "chore(docker)"
