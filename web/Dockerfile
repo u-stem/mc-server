@@ -12,9 +12,8 @@ RUN bun install --frozen-lockfile --ignore-scripts
 # Copy source code
 COPY web/ ./web/
 
-# Build the application
-WORKDIR /app/web
-RUN bun run build
+# Build the application (run from root to use hoisted node_modules)
+RUN bun run --cwd web build
 
 # Production stage
 FROM oven/bun:1-slim AS runner
