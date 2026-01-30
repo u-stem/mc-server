@@ -13,8 +13,9 @@ RUN bun install --frozen-lockfile --ignore-scripts
 COPY web/ ./web/
 
 # Build the application
-WORKDIR /app/web
-RUN bun run build
+# Run from workspace root so bun can find dependencies in node_modules/.bun
+WORKDIR /app
+RUN cd web && bun run build
 
 # Production stage
 FROM oven/bun:1-slim AS runner
