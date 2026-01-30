@@ -10,16 +10,15 @@ import { logger } from './logger';
 
 /**
  * Discord Webhook URLが有効かどうかを検証
- * SSRF対策として、discord.comのWebhook URLのみを許可
+ * SSRF対策として、discord.comまたはdiscordapp.comのWebhook URLのみを許可
  */
 export function isValidDiscordWebhookUrl(url: string): boolean {
   if (!url) return false;
   try {
     const parsed = new URL(url);
+    const isDiscordHost = parsed.hostname === 'discord.com' || parsed.hostname === 'discordapp.com';
     return (
-      parsed.protocol === 'https:' &&
-      parsed.hostname === 'discord.com' &&
-      parsed.pathname.startsWith('/api/webhooks/')
+      parsed.protocol === 'https:' && isDiscordHost && parsed.pathname.startsWith('/api/webhooks/')
     );
   } catch {
     return false;

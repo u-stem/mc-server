@@ -65,10 +65,24 @@ export async function getAutomationConfig(serverId: string): Promise<AutomationC
     const data = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(data) as Partial<AutomationConfig>;
 
-    // デフォルト値とマージ（不足しているプロパティを補完）
+    // デフォルト値とマージ（ネストされたオブジェクトも深くマージ）
     return {
-      discord: { ...DEFAULT_AUTOMATION_CONFIG.discord, ...config.discord },
-      backup: { ...DEFAULT_AUTOMATION_CONFIG.backup, ...config.backup },
+      discord: {
+        ...DEFAULT_AUTOMATION_CONFIG.discord,
+        ...config.discord,
+        alertThresholds: {
+          ...DEFAULT_AUTOMATION_CONFIG.discord.alertThresholds,
+          ...config.discord?.alertThresholds,
+        },
+      },
+      backup: {
+        ...DEFAULT_AUTOMATION_CONFIG.backup,
+        ...config.backup,
+        retention: {
+          ...DEFAULT_AUTOMATION_CONFIG.backup.retention,
+          ...config.backup?.retention,
+        },
+      },
       pluginUpdate: { ...DEFAULT_AUTOMATION_CONFIG.pluginUpdate, ...config.pluginUpdate },
       healthCheck: { ...DEFAULT_AUTOMATION_CONFIG.healthCheck, ...config.healthCheck },
     };

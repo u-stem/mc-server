@@ -55,11 +55,25 @@ export async function PUT(
 
     const body: Partial<AutomationConfig> = await request.json();
 
-    // 既存の設定とマージ
+    // 既存の設定とマージ（ネストされたオブジェクトも深くマージ）
     const currentConfig = await getAutomationConfig(id);
     const newConfig: AutomationConfig = {
-      discord: { ...currentConfig.discord, ...body.discord },
-      backup: { ...currentConfig.backup, ...body.backup },
+      discord: {
+        ...currentConfig.discord,
+        ...body.discord,
+        alertThresholds: {
+          ...currentConfig.discord.alertThresholds,
+          ...body.discord?.alertThresholds,
+        },
+      },
+      backup: {
+        ...currentConfig.backup,
+        ...body.backup,
+        retention: {
+          ...currentConfig.backup.retention,
+          ...body.backup?.retention,
+        },
+      },
       pluginUpdate: { ...currentConfig.pluginUpdate, ...body.pluginUpdate },
       healthCheck: { ...currentConfig.healthCheck, ...body.healthCheck },
     };
