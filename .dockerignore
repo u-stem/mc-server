@@ -1,0 +1,41 @@
+# Dependencies (bun workspaces create symlinks that break in Docker)
+node_modules/
+web/node_modules/
+
+# Build outputs
+.next/
+web/.next/
+out/
+dist/
+
+# Development files
+*.log
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed for build)
+docs/
+*.md
+
+# Test files
+coverage/
+playwright-report/
+test-results/
+
+# Server data (mounted at runtime)
+servers/
+server/
