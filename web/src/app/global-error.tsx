@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface GlobalErrorProps {
@@ -17,7 +18,9 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
       <body className="bg-gray-900 text-white">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center p-8">
-            <div className="text-6xl mb-4">⚠️</div>
+            <div className="mb-4">
+              <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto" />
+            </div>
             <h2 className="text-2xl font-bold text-red-400 mb-4">アプリケーションエラー</h2>
             <p className="text-gray-400 mb-6">
               予期しないエラーが発生しました。ページを再読み込みしてください。

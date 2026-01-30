@@ -17,6 +17,7 @@ import {
   FOLDER_BACKUPS,
   FOLDER_DATA,
 } from './constants';
+import { applyOptimizations } from './optimization';
 
 // プロジェクトルートパス（環境変数で上書き可能）
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.cwd(), '..');
@@ -154,6 +155,10 @@ export async function createServer(request: CreateServerRequest): Promise<Server
 
   // docker-compose.yml を生成
   await generateDockerCompose(newServer);
+
+  // サーバータイプに応じた最適化設定を適用
+  const dataPath = path.join(serverDir, FOLDER_DATA);
+  await applyOptimizations(newServer, dataPath);
 
   return newServer;
 }

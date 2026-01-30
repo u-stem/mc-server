@@ -2,6 +2,18 @@
 
 // API types
 export type { ApiResponse, VersionUpdateRequest, VersionUpdateResponse } from './api';
+// Optimization types
+export type {
+  BukkitOptimization,
+  OptimizationProfile,
+  PaperGlobalOptimization,
+  PaperWorldOptimization,
+  PurpurOptimization,
+  ServerPropertiesOptimization,
+  ServerTypeConfigSupport,
+  ServerTypeConfigSupportMap,
+  SpigotOptimization,
+} from './optimization';
 // Plugin/Mod types
 export type { ModInfo, PluginInfo } from './plugin';
 // Preset types
