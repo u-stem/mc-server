@@ -115,19 +115,32 @@ mc-server/
 │   │   │   ├── ServerPropertiesTab.tsx # サーバー設定タブ
 │   │   │   ├── VersionTab.tsx    # バージョン管理タブ
 │   │   │   ├── WorldImport.tsx   # ワールドインポート
+│   │   │   ├── AutomationSettings.tsx  # オートメーション設定
+│   │   │   ├── DiscordSettings.tsx     # Discord通知設定
+│   │   │   ├── AutoBackupSettings.tsx  # 自動バックアップ設定
+│   │   │   ├── HealthCheckSettings.tsx # ヘルスチェック設定
+│   │   │   ├── PluginUpdateSettings.tsx # プラグイン更新設定
 │   │   │   └── ...               # 機能別コンポーネント
 │   │   ├── lib/                  # ユーティリティ
 │   │   │   ├── constants.ts      # 共通定数
+│   │   │   ├── errorMessages.ts  # エラーメッセージ定数（日本語）
 │   │   │   ├── messages.ts       # UIメッセージ定数
 │   │   │   ├── config.ts         # サーバー設定管理
 │   │   │   ├── docker.ts         # Docker 操作
 │   │   │   ├── validation.ts     # 入力検証
 │   │   │   ├── utils.ts          # ユーティリティ関数
 │   │   │   ├── logger.ts         # ロガー（ログレベル制御）
-│   │   │   ├── pluginCatalog.ts  # Modrinthプラグインカタログ
-│   │   │   ├── world.ts          # ワールドインポート
-│   │   │   ├── backup.ts         # バックアップ操作
 │   │   │   ├── apiHelpers.ts     # API ヘルパー関数
+│   │   │   ├── backup.ts         # バックアップ操作
+│   │   │   ├── world.ts          # ワールドインポート
+│   │   │   ├── addonManager.ts   # プラグイン/Mod共通管理
+│   │   │   ├── pluginCatalog.ts  # Modrinthプラグインカタログ
+│   │   │   ├── automation.ts     # オートメーション設定管理
+│   │   │   ├── automationScheduler.ts # 統合スケジューラー
+│   │   │   ├── autoBackup.ts     # 自動バックアップ
+│   │   │   ├── discord.ts        # Discord Webhook通知
+│   │   │   ├── healthMonitor.ts  # ヘルスモニタリング
+│   │   │   ├── pluginUpdater.ts  # プラグイン更新チェック
 │   │   │   └── *.test.ts         # テストファイル
 │   │   ├── hooks/                # カスタムフック
 │   │   │   └── useTailscaleIp.ts # Tailscale IP取得フック
@@ -137,6 +150,8 @@ mc-server/
 │   │       ├── plugin.ts         # プラグイン / Mod の型
 │   │       ├── properties.ts     # プロパティ定義
 │   │       ├── presets.ts        # プリセット定義
+│   │       ├── automation.ts     # オートメーション関連の型
+│   │       ├── routes.ts         # APIルートパラメータ型
 │   │       └── index.ts          # re-export
 │   ├── Dockerfile                # 本番用 Docker イメージ
 │   └── package.json
@@ -201,6 +216,24 @@ mc-server/
 |---------|---------------|------|
 | GET | `/api/servers/[id]/world` | ワールド情報取得 |
 | POST | `/api/servers/[id]/world/import` | ワールドインポート |
+
+### スケジュール
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | `/api/servers/[id]/schedule` | スケジュール設定取得 |
+| PUT | `/api/servers/[id]/schedule` | スケジュール設定更新 |
+
+### オートメーション
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | `/api/servers/[id]/automation` | オートメーション設定取得 |
+| PUT | `/api/servers/[id]/automation` | オートメーション設定更新 |
+| POST | `/api/servers/[id]/automation/discord/test` | Discord Webhookテスト送信 |
+| POST | `/api/servers/[id]/automation/backup/run` | バックアップ手動実行 |
+| GET | `/api/servers/[id]/automation/health` | ヘルス状態取得 |
+| POST | `/api/servers/[id]/automation/plugins/check` | プラグイン更新チェック実行 |
 
 ### その他
 
@@ -322,7 +355,8 @@ web/src/
 │   ├── pluginCatalog.test.ts    # プラグインカタログのテスト
 │   ├── world.test.ts            # ワールドインポート関連のテスト
 │   ├── apiHelpers.test.ts       # API ヘルパー関数のテスト
-│   └── backup.test.ts           # バックアップ関連のテスト
+│   ├── backup.test.ts           # バックアップ関連のテスト
+│   └── scheduler.test.ts        # スケジューラー関連のテスト
 └── types/
     ├── server.test.ts           # サーバー型・関数のテスト
     └── presets.test.ts          # プリセット関数のテスト
