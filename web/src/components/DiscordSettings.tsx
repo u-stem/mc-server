@@ -120,25 +120,34 @@ export function DiscordSettings({ serverId, config, onSave }: DiscordSettingsPro
           {localConfig.enabled && (
             <>
               {/* Webhook URL */}
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <Input
-                    label="Webhook URL"
+              <div>
+                <label
+                  htmlFor="webhook-url"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
+                  Webhook URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="webhook-url"
                     type="url"
                     value={localConfig.webhookUrl}
                     onChange={(e) => handleChange({ webhookUrl: e.target.value })}
                     placeholder="https://discord.com/api/webhooks/..."
-                    helperText="サーバー設定 → 連携サービス → Webhookから取得"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  <Button
+                    variant="secondary"
+                    onClick={handleTest}
+                    loading={testing}
+                    disabled={!localConfig.webhookUrl}
+                  >
+                    テスト
+                  </Button>
                 </div>
-                <Button
-                  variant="secondary"
-                  onClick={handleTest}
-                  loading={testing}
-                  disabled={!localConfig.webhookUrl}
-                >
-                  テスト
-                </Button>
+                <p className="mt-1 text-xs text-gray-500">
+                  サーバー設定 → 連携サービス → Webhookから取得
+                </p>
               </div>
 
               {/* 通知設定 */}
