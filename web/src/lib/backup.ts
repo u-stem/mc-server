@@ -18,6 +18,47 @@ export { formatSize } from './utils';
 const execFileAsync = promisify(execFile);
 const BACKUP_EXTENSIONS = ['.tar.gz', '.zip'] as const;
 
+/**
+ * ファイル名からタイムスタンプを解析
+ * 例: backup-2026-01-29T17-59-18-453Z.tar.gz -> 2026-01-29T17:59:18.453Z
+ */
+function parseTimestampFromFilename(filename: string): Date | null {
+  // backup-YYYY-MM-DDTHH-MM-SS-mmmZ または backup-full-YYYY-MM-DDTHH-MM-SS-mmmZ
+  const match = filename.match(
+    /backup(?:-full)?-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/
+  );
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute, second, ms] = match;
+  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}.${ms}Z`;
+  const date = new Date(isoString);
+
+  // 有効な日付かチェック
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * バックアップの作成日時を取得
+ * 1. ファイル名からタイムスタンプを解析（推奨）
+ * 2. ファイルのbirthtime（作成日時）を使用
+ * 3. birthtimeが無効な場合はmtime（更新日時）にフォールバック
+ */
+function getBackupCreatedAt(filename: string, stats: { birthtime: Date; mtime: Date }): string {
+  // まずファイル名から解析を試みる
+  const parsedDate = parseTimestampFromFilename(filename);
+  if (parsedDate) {
+    return parsedDate.toISOString();
+  }
+
+  // birthtimeが1970年（Unix epoch）の場合はmtimeを使用
+  const epochYear = 1970;
+  if (stats.birthtime.getFullYear() === epochYear) {
+    return stats.mtime.toISOString();
+  }
+
+  return stats.birthtime.toISOString();
+}
+
 // バックアップ一覧を取得
 export async function listBackups(serverId: string): Promise<BackupInfo[]> {
   // サーバーIDをバリデーション
@@ -43,7 +84,7 @@ export async function listBackups(serverId: string): Promise<BackupInfo[]> {
         id: file.replace(/\.(tar\.gz|zip)$/, ''),
         filename: file,
         size: stats.size,
-        createdAt: stats.birthtime.toISOString(),
+        createdAt: getBackupCreatedAt(file, stats),
       });
     }
 
