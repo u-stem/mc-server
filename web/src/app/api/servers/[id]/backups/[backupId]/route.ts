@@ -1,17 +1,19 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { deleteBackup } from '@/lib/backup';
+import {
+  ERROR_BACKUP_NOT_FOUND,
+  ERROR_DELETE_BACKUP_FAILED,
+  ERROR_INVALID_BACKUP_ID_FORMAT,
+  MSG_BACKUP_DELETED,
+} from '@/lib/errorMessages';
 import { isValidFileName } from '@/lib/validation';
-import type { ApiResponse } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string; backupId: string }>;
-}
+import type { ApiResponse, BackupIdParams } from '@/types';
 
 // DELETE /api/servers/[id]/backups/[backupId] - バックアップ削除
 export async function DELETE(
   _request: Request,
-  { params }: RouteParams
+  { params }: BackupIdParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
     const { id, backupId } = await params;
@@ -23,18 +25,18 @@ export async function DELETE(
 
     // バックアップIDをバリデーション
     if (!isValidFileName(backupId)) {
-      return errorResponse('Invalid backup ID format', 400);
+      return errorResponse(ERROR_INVALID_BACKUP_ID_FORMAT, 400);
     }
 
     const deleted = await deleteBackup(id, backupId);
 
     if (!deleted) {
-      return errorResponse('Backup not found', 404);
+      return errorResponse(ERROR_BACKUP_NOT_FOUND, 404);
     }
 
-    return successResponse({ message: 'Backup deleted' });
+    return successResponse({ message: MSG_BACKUP_DELETED });
   } catch (error) {
-    console.error('Failed to delete backup:', error);
-    return errorResponse('Failed to delete backup');
+    console.error(ERROR_DELETE_BACKUP_FAILED, error);
+    return errorResponse(ERROR_DELETE_BACKUP_FAILED);
   }
 }

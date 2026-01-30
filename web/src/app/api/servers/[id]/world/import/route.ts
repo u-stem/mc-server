@@ -6,15 +6,21 @@ import {
   withErrorHandler,
 } from '@/lib/apiHelpers';
 import { getServerStatus } from '@/lib/docker';
+import {
+  ERROR_FILE_NOT_SPECIFIED,
+  ERROR_FILE_SIZE_EXCEEDS_LIMIT,
+  ERROR_IMPORT_WORLD_FAILED,
+  ERROR_SERVER_IS_RUNNING,
+  ERROR_UNSUPPORTED_ARCHIVE_FORMAT,
+  ERROR_WORLD_IMPORT_FAILED,
+} from '@/lib/errorMessages';
 import { importServerWorld, isValidWorldArchive, MAX_WORLD_UPLOAD_SIZE } from '@/lib/world';
-import type { ApiResponse } from '@/types';
-
-type RouteParams = { params: Promise<{ id: string }> };
+import type { ApiResponse, ServerIdParams } from '@/types';
 
 // POST /api/servers/[id]/world/import - ワールドをインポート
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse>> {
   const { id } = await params;
 
@@ -27,10 +33,7 @@ export async function POST(
     // サーバーが起動中かチェック
     const status = await getServerStatus(id);
     if (status.running) {
-      return errorResponse(
-        'サーバーが起動中です。インポートするには先にサーバーを停止してください',
-        400
-      );
+      return errorResponse(ERROR_SERVER_IS_RUNNING, 400);
     }
 
     // multipart/form-data を解析
@@ -39,20 +42,17 @@ export async function POST(
     const overwrite = formData.get('overwrite') === 'true';
 
     if (!file || !(file instanceof File)) {
-      return errorResponse('ファイルが指定されていません', 400);
+      return errorResponse(ERROR_FILE_NOT_SPECIFIED, 400);
     }
 
     // ファイル名チェック
     if (!isValidWorldArchive(file.name)) {
-      return errorResponse(
-        '対応していないファイル形式です。.zip または .tar.gz を使用してください',
-        400
-      );
+      return errorResponse(ERROR_UNSUPPORTED_ARCHIVE_FORMAT, 400);
     }
 
     // ファイルサイズチェック
     if (file.size > MAX_WORLD_UPLOAD_SIZE) {
-      return errorResponse('ファイルサイズが上限（500MB）を超えています', 400);
+      return errorResponse(ERROR_FILE_SIZE_EXCEEDS_LIMIT, 400);
     }
 
     // バッファに変換
@@ -63,9 +63,9 @@ export async function POST(
     const result = await importServerWorld(id, buffer, file.name, overwrite);
 
     if (!result.success) {
-      return errorResponse(result.error || 'インポートに失敗しました', 400);
+      return errorResponse(result.error || ERROR_WORLD_IMPORT_FAILED, 400);
     }
 
     return successResponse({ message: result.message });
-  }, 'Failed to import world');
+  }, ERROR_IMPORT_WORLD_FAILED);
 }

@@ -1,16 +1,17 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { createBackup, listBackups } from '@/lib/backup';
-import type { ApiResponse, BackupInfo } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import {
+  ERROR_CREATE_BACKUP_FAILED,
+  ERROR_LIST_BACKUPS_FAILED,
+  withErrorContext,
+} from '@/lib/errorMessages';
+import type { ApiResponse, BackupInfo, ServerIdParams } from '@/types';
 
 // GET /api/servers/[id]/backups - バックアップ一覧取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<BackupInfo[]>>> {
   try {
     const { id } = await params;
@@ -24,15 +25,15 @@ export async function GET(
 
     return successResponse(backups);
   } catch (error) {
-    console.error('Failed to list backups:', error);
-    return errorResponse('Failed to list backups') as NextResponse<ApiResponse<BackupInfo[]>>;
+    console.error(ERROR_LIST_BACKUPS_FAILED, error);
+    return errorResponse(ERROR_LIST_BACKUPS_FAILED) as NextResponse<ApiResponse<BackupInfo[]>>;
   }
 }
 
 // POST /api/servers/[id]/backups - バックアップ作成
 export async function POST(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<BackupInfo>>> {
   try {
     const { id } = await params;
@@ -46,10 +47,10 @@ export async function POST(
 
     return successResponse(backup);
   } catch (error) {
-    console.error('Failed to create backup:', error);
+    console.error(ERROR_CREATE_BACKUP_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to create backup: ${errorMessage}`) as NextResponse<
-      ApiResponse<BackupInfo>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_CREATE_BACKUP_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<BackupInfo>>;
   }
 }

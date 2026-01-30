@@ -1,17 +1,20 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
+import {
+  ERROR_DELETE_MOD_FAILED,
+  ERROR_INVALID_FILENAME_FORMAT,
+  ERROR_MOD_NOT_FOUND,
+  ERROR_TOGGLE_MOD_FAILED,
+  withErrorContext,
+} from '@/lib/errorMessages';
 import { deleteMod, toggleMod } from '@/lib/mods';
 import { isValidFileName } from '@/lib/validation';
-import type { ApiResponse, ModInfo } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string; filename: string }>;
-}
+import type { ApiResponse, FilenameParams, ModInfo } from '@/types';
 
 // DELETE /api/servers/[id]/mods/[filename] - Mod削除
 export async function DELETE(
   _request: Request,
-  { params }: RouteParams
+  { params }: FilenameParams
 ): Promise<NextResponse<ApiResponse<{ deleted: boolean }>>> {
   try {
     const { id, filename } = await params;
@@ -24,7 +27,7 @@ export async function DELETE(
     // ファイル名をバリデーション
     const decodedFilename = decodeURIComponent(filename);
     if (!isValidFileName(decodedFilename.replace('.disabled', ''))) {
-      return errorResponse('Invalid filename format', 400) as NextResponse<
+      return errorResponse(ERROR_INVALID_FILENAME_FORMAT, 400) as NextResponse<
         ApiResponse<{ deleted: boolean }>
       >;
     }
@@ -32,14 +35,16 @@ export async function DELETE(
     const deleted = await deleteMod(id, decodedFilename);
 
     if (!deleted) {
-      return errorResponse('Mod not found', 404) as NextResponse<ApiResponse<{ deleted: boolean }>>;
+      return errorResponse(ERROR_MOD_NOT_FOUND, 404) as NextResponse<
+        ApiResponse<{ deleted: boolean }>
+      >;
     }
 
     return successResponse({ deleted: true });
   } catch (error) {
-    console.error('Failed to delete mod:', error);
+    console.error(ERROR_DELETE_MOD_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to delete mod: ${errorMessage}`) as NextResponse<
+    return errorResponse(withErrorContext(ERROR_DELETE_MOD_FAILED, errorMessage)) as NextResponse<
       ApiResponse<{ deleted: boolean }>
     >;
   }
@@ -48,7 +53,7 @@ export async function DELETE(
 // PATCH /api/servers/[id]/mods/[filename] - Mod有効/無効切り替え
 export async function PATCH(
   _request: Request,
-  { params }: RouteParams
+  { params }: FilenameParams
 ): Promise<NextResponse<ApiResponse<ModInfo>>> {
   try {
     const { id, filename } = await params;
@@ -61,16 +66,18 @@ export async function PATCH(
     // ファイル名をバリデーション
     const decodedFilename = decodeURIComponent(filename);
     if (!isValidFileName(decodedFilename.replace('.disabled', ''))) {
-      return errorResponse('Invalid filename format', 400) as NextResponse<ApiResponse<ModInfo>>;
+      return errorResponse(ERROR_INVALID_FILENAME_FORMAT, 400) as NextResponse<
+        ApiResponse<ModInfo>
+      >;
     }
 
     const modInfo = await toggleMod(id, decodedFilename);
 
     return successResponse(modInfo);
   } catch (error) {
-    console.error('Failed to toggle mod:', error);
+    console.error(ERROR_TOGGLE_MOD_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to toggle mod: ${errorMessage}`) as NextResponse<
+    return errorResponse(withErrorContext(ERROR_TOGGLE_MOD_FAILED, errorMessage)) as NextResponse<
       ApiResponse<ModInfo>
     >;
   }

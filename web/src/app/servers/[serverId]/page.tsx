@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useState } from 'react';
+import { AutomationSettings } from '@/components/AutomationSettings';
 import { BackupManager } from '@/components/BackupManager';
 import { BasicSettingsTab } from '@/components/BasicSettingsTab';
 import { Button } from '@/components/Button';
@@ -24,6 +25,7 @@ import { VersionTab } from '@/components/VersionTab';
 import { WhitelistManager } from '@/components/WhitelistManager';
 import { WorldImport } from '@/components/WorldImport';
 import { useTailscaleIp } from '@/hooks/useTailscaleIp';
+import { POLLING_INTERVAL_STATUS, UI_SERVER_REFRESH_DELAY_MS } from '@/lib/constants';
 import {
   LABEL_BACK,
   LABEL_BACK_TO_DASHBOARD,
@@ -68,6 +70,7 @@ type TabId =
   | 'properties'
   | 'version'
   | 'schedule'
+  | 'automation'
   | 'help';
 
 interface Tab {
@@ -111,7 +114,7 @@ export default function ServerDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchServer();
-    const interval = setInterval(fetchServer, 10000);
+    const interval = setInterval(fetchServer, POLLING_INTERVAL_STATUS);
     return () => clearInterval(interval);
   }, [fetchServer]);
 
@@ -159,7 +162,7 @@ export default function ServerDetailPage({ params }: PageProps) {
       const res = await fetch(`/api/servers/${serverId}/start`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to start');
       addToast('success', 'サーバーを起動しています...');
-      setTimeout(fetchServer, 3000);
+      setTimeout(fetchServer, UI_SERVER_REFRESH_DELAY_MS);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       addToast('error', `起動に失敗しました: ${message}`);
@@ -174,7 +177,7 @@ export default function ServerDetailPage({ params }: PageProps) {
       const res = await fetch(`/api/servers/${serverId}/stop`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to stop');
       addToast('success', 'サーバーを停止しました');
-      setTimeout(fetchServer, 3000);
+      setTimeout(fetchServer, UI_SERVER_REFRESH_DELAY_MS);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       addToast('error', `停止に失敗しました: ${message}`);
@@ -255,6 +258,7 @@ export default function ServerDetailPage({ params }: PageProps) {
     { id: 'properties', label: 'サーバー設定', show: !isBedrock },
     { id: 'version', label: 'バージョン', show: !isBedrock },
     { id: 'schedule', label: 'スケジュール' },
+    { id: 'automation', label: 'オートメーション', show: !isBedrock },
     { id: 'help', label: 'ヘルプ' },
   ];
   const tabs = allTabs.filter((tab) => tab.show !== false);
@@ -656,6 +660,15 @@ export default function ServerDetailPage({ params }: PageProps) {
           className={activeTab === 'schedule' ? '' : 'hidden'}
         >
           <ScheduleSettings serverId={serverId} />
+        </div>
+
+        <div
+          id="tabpanel-automation"
+          role="tabpanel"
+          aria-labelledby="tab-automation"
+          className={activeTab === 'automation' ? '' : 'hidden'}
+        >
+          <AutomationSettings serverId={serverId} serverType={server.type} />
         </div>
 
         <div

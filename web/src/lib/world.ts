@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { getServerDataPath } from './config';
 import { FOLDER_WORLD, MAX_WORLD_UPLOAD_SIZE } from './constants';
+import { ERROR_FILE_SIZE_EXCEEDS_LIMIT, ERROR_UNSUPPORTED_ARCHIVE_FORMAT } from './errorMessages';
 import { validateServerId } from './validation';
 
 const execFileAsync = promisify(execFile);
@@ -238,14 +239,14 @@ export async function importServerWorld(
 
   // ファイルサイズチェック
   if (buffer.length > MAX_WORLD_UPLOAD_SIZE) {
-    return { success: false, error: 'ファイルサイズが上限（500MB）を超えています' };
+    return { success: false, error: ERROR_FILE_SIZE_EXCEEDS_LIMIT };
   }
 
   // ファイル名チェック
   if (!isValidWorldArchive(filename)) {
     return {
       success: false,
-      error: '対応していないファイル形式です。.zip または .tar.gz を使用してください',
+      error: ERROR_UNSUPPORTED_ARCHIVE_FORMAT,
     };
   }
 

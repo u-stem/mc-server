@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServer } from '@/lib/config';
+import { ERROR_INVALID_SERVER_ID, ERROR_SERVER_NOT_FOUND } from '@/lib/errorMessages';
 import { ServerIdSchema } from '@/lib/validation';
 import type { ApiResponse, ServerConfig } from '@/types';
 
@@ -30,7 +31,7 @@ export function validateServerId(
   if (!result.success) {
     return {
       valid: false,
-      response: errorResponse('Invalid server ID format', 400),
+      response: errorResponse(ERROR_INVALID_SERVER_ID, 400),
     };
   }
   return { valid: true, id };
@@ -54,7 +55,7 @@ export async function validateAndGetServer(
   if (!server) {
     return {
       success: false,
-      response: errorResponse('Server not found', 404),
+      response: errorResponse(ERROR_SERVER_NOT_FOUND, 404),
     };
   }
 

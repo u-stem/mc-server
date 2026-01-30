@@ -110,7 +110,7 @@ describe('validateServerId', () => {
     if (!result.valid) {
       expect(result.response.status).toBe(400);
       const body = await result.response.json();
-      expect(body.error).toBe('Invalid server ID format');
+      expect(body.error).toBe('サーバーIDが無効です');
     }
   });
 

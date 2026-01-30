@@ -3,16 +3,18 @@ import { z } from 'zod';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { createFullBackup } from '@/lib/backup';
 import { updateServer } from '@/lib/config';
+import { STARTUP_MAX_RETRY_COUNT, STARTUP_RETRY_DELAY_MS } from '@/lib/constants';
 import { getServerStatus, recreateServer, stopServer } from '@/lib/docker';
-import type { ApiResponse, VersionUpdateResponse } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import {
+  ERROR_INVALID_VERSION_FORMAT,
+  ERROR_UPDATE_VERSION_FAILED,
+  withErrorContext,
+} from '@/lib/errorMessages';
+import type { ApiResponse, ServerIdParams, VersionUpdateResponse } from '@/types';
 
 const VersionUpdateSchema = z.object({
   version: z.string().regex(/^\d+\.\d+(\.\d+)?$/, {
-    message: 'バージョンは "1.21.1" の形式で指定してください',
+    message: ERROR_INVALID_VERSION_FORMAT,
   }),
   createBackup: z.boolean().optional().default(true),
 });
@@ -20,7 +22,7 @@ const VersionUpdateSchema = z.object({
 // PUT /api/servers/[id]/version - バージョン更新（バックアップ付き）
 export async function PUT(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<VersionUpdateResponse>>> {
   try {
     const { id } = await params;
@@ -56,7 +58,7 @@ export async function PUT(
     if (status.running) {
       await stopServer(id);
       // 停止を待つ
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, STARTUP_RETRY_DELAY_MS));
     }
 
     // 2. バックアップを作成（オプション）
@@ -79,8 +81,8 @@ export async function PUT(
 
     // 5. 起動確認（最大30秒待機）
     let startupConfirmed = false;
-    for (let i = 0; i < 6; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+    for (let i = 0; i < STARTUP_MAX_RETRY_COUNT; i++) {
+      await new Promise((resolve) => setTimeout(resolve, STARTUP_RETRY_DELAY_MS));
       const newStatus = await getServerStatus(id);
       if (newStatus.running) {
         startupConfirmed = true;
@@ -99,10 +101,10 @@ export async function PUT(
       backupPath,
     });
   } catch (error) {
-    console.error('Failed to update version:', error);
+    console.error(ERROR_UPDATE_VERSION_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to update version: ${errorMessage}`) as NextResponse<
-      ApiResponse<VersionUpdateResponse>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_UPDATE_VERSION_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<VersionUpdateResponse>>;
   }
 }

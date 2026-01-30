@@ -2,14 +2,16 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ServerSchedule } from '@/types';
 import { DEFAULT_SERVER_SCHEDULE } from '@/types';
+import { runAutomationTick } from './automationScheduler';
 import { getAllServers } from './config';
+import { DAYS_PER_WEEK, MINUTES_PER_DAY, MS_PER_MINUTE } from './constants';
 import { getServerStatus, startServer, stopServer } from './docker';
 import { logger } from './logger';
 
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.cwd(), '..');
 const SERVERS_DIR = path.join(PROJECT_ROOT, 'servers');
 const SCHEDULE_FILE = 'schedule.json';
-const SCHEDULER_INTERVAL_MS = 60_000; // 1分
+const SCHEDULER_INTERVAL_MS = MS_PER_MINUTE;
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 
@@ -31,9 +33,9 @@ export function parseTime(time: string): number {
   const hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
 
-  // 24:00は特別に許可（1440分 = 翌日0:00）
+  // 24:00は特別に許可（翌日0:00として扱う）
   if (hours === 24 && minutes === 0) {
-    return 1440;
+    return MINUTES_PER_DAY;
   }
 
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
@@ -63,10 +65,10 @@ function checkDaySchedule(
   }
 
   // 24:00開始は0:00として扱う
-  const effectiveStartMinutes = startMinutes === 1440 ? 0 : startMinutes;
+  const effectiveStartMinutes = startMinutes === MINUTES_PER_DAY ? 0 : startMinutes;
 
   // 日をまたぐスケジュール (例: 22:00 - 02:00 または 24:00 - 01:00)
-  const crossesMidnight = effectiveStartMinutes >= endMinutes || startMinutes === 1440;
+  const crossesMidnight = effectiveStartMinutes >= endMinutes || startMinutes === MINUTES_PER_DAY;
 
   if (isYesterday) {
     // 前日のスケジュールをチェック: 日をまたいでいる場合のみ、終了時刻未満かどうか
@@ -110,7 +112,7 @@ export function isWithinSchedule(schedule: ServerSchedule, date: Date): boolean 
 
   // 前日のスケジュールが日をまたいでいる場合をチェック
   // (例: 木曜24:00-01:00 → 金曜0:00-1:00も有効)
-  const yesterdayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const yesterdayIndex = dayOfWeek === 0 ? DAYS_PER_WEEK - 1 : dayOfWeek - 1;
   const yesterdaySchedule = schedule.weeklySchedule[yesterdayIndex];
   if (checkDaySchedule(yesterdaySchedule, currentMinutes, true)) {
     return true;
@@ -177,6 +179,9 @@ async function runSchedulerTick(): Promise<void> {
         logger.error(`[Scheduler] Error processing server ${server.id}:`, error);
       }
     }
+
+    // オートメーションタスクを実行
+    await runAutomationTick();
   } catch (error) {
     logger.error('[Scheduler] Error in scheduler tick:', error);
   }

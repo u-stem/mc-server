@@ -83,6 +83,12 @@ export const FOLDER_DATA = 'data';
 export const POLLING_INTERVAL_LOGS = 5000;
 export const POLLING_INTERVAL_STATUS = 10000;
 export const POLLING_INTERVAL_DASHBOARD = 30000;
+export const POLLING_INTERVAL_HEALTH_STATE = 30000;
+
+// UI遅延（ミリ秒）
+export const UI_COPY_FEEDBACK_MS = 1500;
+export const UI_ACTION_DELAY_MS = 2000;
+export const UI_SERVER_REFRESH_DELAY_MS = 3000;
 
 // 外部API
 export const MODRINTH_API_URL = 'https://api.modrinth.com/v2';
@@ -104,3 +110,56 @@ export const PLUGIN_DOCS = {
   GEYSER: 'https://geysermc.org/wiki',
   FLOODGATE: 'https://geysermc.org/wiki/floodgate',
 } as const;
+
+// オートメーション設定ファイル名
+export const FILE_AUTOMATION = 'automation.json';
+export const FILE_BACKUP_STATE = 'backup-state.json';
+export const FILE_HEALTH_STATE = 'health-state.json';
+export const FILE_PLUGIN_UPDATES = 'plugin-updates.json';
+
+// オートメーションタイムアウト（ミリ秒）
+export const TIMEOUT_MODRINTH_MS = 10000;
+export const TIMEOUT_PLUGIN_VERSION_MS = 5000;
+
+// オートメーション間隔
+export const INTERVAL_HEALTH_CHECK_MIN_SECONDS = 30;
+export const INTERVAL_PLUGIN_CHECK_MIN_HOURS = 1;
+export const INTERVAL_PLUGIN_CHECK_MAX_HOURS = 168; // 1週間
+export const INTERVAL_BACKUP_MIN_MS = 23 * 60 * 60 * 1000; // 日次: 23時間
+export const INTERVAL_BACKUP_WEEKLY_MIN_MS = 6 * 24 * 60 * 60 * 1000; // 週次: 6日
+
+// クラッシュ検出
+export const CRASH_DETECTION_WINDOW_MS = 5 * 60 * 1000; // 5分
+
+// Discord Embed カラーコード
+export const DISCORD_COLORS = {
+  SUCCESS: 0x00ff00, // 緑
+  WARNING: 0xffff00, // 黄
+  ERROR: 0xff0000, // 赤
+  INFO: 0x0099ff, // 青
+} as const;
+
+// プラグインサーバータイプ
+export const PLUGIN_SERVER_LOADERS = ['paper', 'spigot', 'bukkit', 'purpur', 'folia'] as const;
+
+// 時間定数
+export const MINUTES_PER_DAY = 1440;
+export const DAYS_PER_WEEK = 7;
+export const MS_PER_SECOND = 1000;
+export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+export const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+// ヘルスチェック閾値
+export const TPS_CRITICAL_RATIO = 0.8; // 警告閾値の80%を下回ると危険
+export const MEMORY_CRITICAL_PERCENT = 95; // メモリ使用率95%以上で危険
+
+// サーバー起動/リトライ
+export const STARTUP_RETRY_DELAY_MS = 5000; // リトライ間隔（5秒）
+export const STARTUP_MAX_RETRY_COUNT = 6; // 最大リトライ回数
+export const TAILSCALE_COMMAND_TIMEOUT_MS = 5000; // Tailscaleコマンドタイムアウト
+
+// バリデーション最小値
+export const MIN_BACKUP_RETENTION_COUNT = 1;
+export const MIN_BACKUP_RETENTION_DAYS = 1;
+export const MIN_CONSECUTIVE_FAILURES = 1;

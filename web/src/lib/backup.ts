@@ -5,6 +5,11 @@ import { promisify } from 'node:util';
 import type { BackupInfo } from '@/types';
 import { getServerBackupPath, getServerDataPath } from './config';
 import { FOLDER_MODS, FOLDER_WORLD, TIMEOUT_BACKUP_MS, TIMEOUT_FULL_BACKUP_MS } from './constants';
+import {
+  ERROR_INVALID_BACKUP_ID_FORMAT,
+  ERROR_NO_DATA_TO_BACKUP,
+  ERROR_WORLD_FOLDER_NOT_FOUND,
+} from './errorMessages';
 import { isValidFileName, validateServerId } from './validation';
 
 // 共通ユーティリティを再エクスポート
@@ -71,7 +76,7 @@ export async function createBackup(serverId: string): Promise<BackupInfo> {
   try {
     await fs.access(worldPath);
   } catch {
-    throw new Error('World folder not found');
+    throw new Error(ERROR_WORLD_FOLDER_NOT_FOUND);
   }
 
   // tar.gz で圧縮（execFile使用でインジェクション防止）
@@ -152,7 +157,7 @@ export async function createFullBackup(serverId: string): Promise<BackupInfo> {
   }
 
   if (itemsToBackup.length === 0) {
-    throw new Error('No data to backup');
+    throw new Error(ERROR_NO_DATA_TO_BACKUP);
   }
 
   // tar.gz で圧縮（execFile使用でインジェクション防止）
@@ -177,7 +182,7 @@ export async function deleteBackup(serverId: string, backupId: string): Promise<
 
   // バックアップIDをバリデーション（パストラバーサル防止）
   if (!isValidFileName(backupId)) {
-    throw new Error('Invalid backup ID format');
+    throw new Error(ERROR_INVALID_BACKUP_ID_FORMAT);
   }
 
   const backupPath = getServerBackupPath(serverId);

@@ -1,16 +1,20 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
+import {
+  ERROR_GET_SCHEDULE_FAILED,
+  ERROR_SCHEDULE_ENABLED_MUST_BE_BOOLEAN,
+  ERROR_SCHEDULE_TIMEZONE_REQUIRED,
+  ERROR_SCHEDULE_WEEKLY_REQUIRED,
+  ERROR_UPDATE_SCHEDULE_FAILED,
+  withErrorContext,
+} from '@/lib/errorMessages';
 import { getSchedule, saveSchedule } from '@/lib/scheduler';
-import type { ApiResponse, ServerSchedule } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type { ApiResponse, ServerIdParams, ServerSchedule } from '@/types';
 
 // GET /api/servers/[id]/schedule - スケジュール設定取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerSchedule>>> {
   try {
     const { id } = await params;
@@ -24,9 +28,9 @@ export async function GET(
 
     return successResponse(schedule);
   } catch (error) {
-    console.error('Failed to get schedule:', error);
+    console.error(ERROR_GET_SCHEDULE_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to get schedule: ${errorMessage}`) as NextResponse<
+    return errorResponse(withErrorContext(ERROR_GET_SCHEDULE_FAILED, errorMessage)) as NextResponse<
       ApiResponse<ServerSchedule>
     >;
   }
@@ -35,7 +39,7 @@ export async function GET(
 // PUT /api/servers/[id]/schedule - スケジュール設定更新
 export async function PUT(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerSchedule>>> {
   try {
     const { id } = await params;
@@ -49,19 +53,19 @@ export async function PUT(
 
     // バリデーション
     if (typeof body.enabled !== 'boolean') {
-      return errorResponse('Invalid schedule: enabled must be boolean', 400) as NextResponse<
+      return errorResponse(ERROR_SCHEDULE_ENABLED_MUST_BE_BOOLEAN, 400) as NextResponse<
         ApiResponse<ServerSchedule>
       >;
     }
 
     if (!body.timezone || typeof body.timezone !== 'string') {
-      return errorResponse('Invalid schedule: timezone is required', 400) as NextResponse<
+      return errorResponse(ERROR_SCHEDULE_TIMEZONE_REQUIRED, 400) as NextResponse<
         ApiResponse<ServerSchedule>
       >;
     }
 
     if (!body.weeklySchedule || typeof body.weeklySchedule !== 'object') {
-      return errorResponse('Invalid schedule: weeklySchedule is required', 400) as NextResponse<
+      return errorResponse(ERROR_SCHEDULE_WEEKLY_REQUIRED, 400) as NextResponse<
         ApiResponse<ServerSchedule>
       >;
     }
@@ -70,10 +74,10 @@ export async function PUT(
 
     return successResponse(body);
   } catch (error) {
-    console.error('Failed to update schedule:', error);
+    console.error(ERROR_UPDATE_SCHEDULE_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to update schedule: ${errorMessage}`) as NextResponse<
-      ApiResponse<ServerSchedule>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_UPDATE_SCHEDULE_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<ServerSchedule>>;
   }
 }
