@@ -48,6 +48,17 @@ export const PLUGIN_SERVER_TYPES: ServerType[] = [
 // Bedrock（統合版）サーバータイプ
 export const BEDROCK_SERVER_TYPES: ServerType[] = ['BEDROCK'];
 
+// TPSコマンドをサポートするサーバータイプ（Bukkit/Spigot系）
+export const TPS_SUPPORTED_SERVER_TYPES: ServerType[] = [
+  'SPIGOT',
+  'PAPER',
+  'PURPUR',
+  'FOLIA',
+  'MOHIST',
+  'ARCLIGHT',
+  'CATSERVER',
+];
+
 // MODサーバーかどうかを判定
 export function isModServer(type: ServerType): boolean {
   return MOD_SERVER_TYPES.includes(type);
@@ -61,6 +72,11 @@ export function isPluginServer(type: ServerType): boolean {
 // Bedrockサーバーかどうかを判定
 export function isBedrockServer(type: ServerType): boolean {
   return BEDROCK_SERVER_TYPES.includes(type);
+}
+
+// TPSコマンドをサポートするサーバーかどうかを判定
+export function supportsTps(type: ServerType): boolean {
+  return TPS_SUPPORTED_SERVER_TYPES.includes(type);
 }
 
 // サーバー設定
@@ -85,6 +101,13 @@ export interface ServerConfig {
   geyserPort?: number;
 }
 
+// TPS情報（1分、5分、15分の平均）
+export interface TpsInfo {
+  tps1m: number;
+  tps5m: number;
+  tps15m: number;
+}
+
 // サーバーステータス
 export interface ServerStatus {
   running: boolean;
@@ -99,6 +122,7 @@ export interface ServerStatus {
     total: string;
   };
   cpu?: string;
+  tps?: TpsInfo;
 }
 
 // サーバー詳細（設定 + ステータス）

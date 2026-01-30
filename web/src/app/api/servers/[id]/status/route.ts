@@ -1,7 +1,9 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { getContainerInfo, getServerStatus } from '@/lib/docker';
-import type { ApiResponse, ServerStatus } from '@/types';
+import { getTps } from '@/lib/rcon';
+import type { ApiResponse, ServerStatus, TpsInfo } from '@/types';
+import { supportsTps } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,13 +22,21 @@ export async function GET(
       return result.response as NextResponse<ApiResponse<ServerStatus>>;
     }
 
+    const { server } = result;
     const status = await getServerStatus(id);
     const containerInfo = await getContainerInfo(id);
+
+    // TPSを取得（サーバーが起動中かつTPSサポートタイプの場合のみ）
+    let tps: TpsInfo | undefined;
+    if (status.running && supportsTps(server.type)) {
+      tps = (await getTps(id)) ?? undefined;
+    }
 
     return successResponse({
       ...status,
       uptime: containerInfo?.uptime,
       memory: containerInfo?.memory,
+      tps,
     });
   } catch (error) {
     console.error('Failed to get server status:', error);

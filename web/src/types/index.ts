@@ -39,6 +39,7 @@ export type {
   ServerStatus,
   ServersConfigFile,
   ServerType,
+  TpsInfo,
   WhitelistEntry,
 } from './server';
 export {
@@ -48,4 +49,6 @@ export {
   isPluginServer,
   MOD_SERVER_TYPES,
   PLUGIN_SERVER_TYPES,
+  supportsTps,
+  TPS_SUPPORTED_SERVER_TYPES,
 } from './server';
