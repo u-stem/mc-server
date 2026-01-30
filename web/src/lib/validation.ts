@@ -15,6 +15,7 @@ import {
   VIEW_DISTANCE_MAX,
   VIEW_DISTANCE_MIN,
 } from './constants';
+import { ERROR_INVALID_SERVER_ID } from './errorMessages';
 
 // UUID v4 の正規表現
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -32,7 +33,7 @@ export function isValidServerId(id: string): boolean {
 // サーバーID を検証して返す（無効な場合はエラー）
 export function validateServerId(id: string): string {
   if (!isValidServerId(id)) {
-    throw new Error('Invalid server ID format');
+    throw new Error(ERROR_INVALID_SERVER_ID);
   }
   return id;
 }

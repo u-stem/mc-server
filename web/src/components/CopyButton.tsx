@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { UI_COPY_FEEDBACK_MS } from '@/lib/constants';
 
 interface CopyButtonProps {
   text: string;
@@ -15,7 +16,7 @@ export function CopyButton({ text, className = '', size = 'sm' }: CopyButtonProp
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => setCopied(false), UI_COPY_FEEDBACK_MS);
     } catch (err) {
       console.error('Failed to copy:', err);
     }

@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServer, getAllServers } from '@/lib/config';
+import { DEFAULT_RCON_PORT } from '@/lib/constants';
 import { getServerStatus } from '@/lib/docker';
+import {
+  createValidationError,
+  ERROR_CREATE_SERVER_FAILED,
+  ERROR_GET_SERVERS_FAILED,
+} from '@/lib/errorMessages';
 import { CreateServerSchema, generateRandomPassword } from '@/lib/validation';
 import type { ApiResponse, ServerDetails } from '@/types';
 import { isBedrockServer } from '@/types';
@@ -23,11 +29,11 @@ export async function GET(): Promise<NextResponse<ApiResponse<ServerDetails[]>>>
       data: serversWithStatus,
     });
   } catch (error) {
-    console.error('Failed to get servers:', error);
+    console.error(ERROR_GET_SERVERS_FAILED, error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to get servers',
+        error: ERROR_GET_SERVERS_FAILED,
       },
       { status: 500 }
     );
@@ -47,7 +53,7 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse>>
       return NextResponse.json(
         {
           success: false,
-          error: `Validation error: ${errors}`,
+          error: createValidationError(errors),
         },
         { status: 400 }
       );
@@ -62,7 +68,7 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse>>
       name: data.name,
       port: data.port,
       // Bedrock サーバーは RCON がないため 0 を設定
-      rconPort: isBedrock ? 0 : (data.rconPort ?? 25575),
+      rconPort: isBedrock ? 0 : (data.rconPort ?? DEFAULT_RCON_PORT),
       // パスワードが未指定の場合はランダム生成（安全）、Bedrock の場合は空
       rconPassword: isBedrock ? '' : data.rconPassword || generateRandomPassword(),
       version: data.version,
@@ -83,11 +89,11 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse>>
       data: server,
     });
   } catch (error) {
-    console.error('Failed to create server:', error);
+    console.error(ERROR_CREATE_SERVER_FAILED, error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to create server',
+        error: ERROR_CREATE_SERVER_FAILED,
       },
       { status: 500 }
     );

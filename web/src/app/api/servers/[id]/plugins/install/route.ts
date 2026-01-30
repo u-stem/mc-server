@@ -1,17 +1,20 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
+import {
+  ERROR_DOWNLOAD_MODRINTH_FAILED,
+  ERROR_INSTALL_PLUGIN_FAILED,
+  ERROR_PLUGIN_ID_REQUIRED,
+  ERROR_PLUGIN_NOT_IN_RECOMMENDED,
+  withErrorContext,
+} from '@/lib/errorMessages';
 import { downloadPluginFromModrinth, RECOMMENDED_PLUGINS } from '@/lib/pluginCatalog';
 import { uploadPlugin } from '@/lib/plugins';
-import type { ApiResponse, PluginInfo } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type { ApiResponse, PluginInfo, ServerIdParams } from '@/types';
 
 // POST /api/servers/[id]/plugins/install - おすすめプラグインをインストール
 export async function POST(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<PluginInfo>>> {
   try {
     const { id } = await params;
@@ -26,13 +29,13 @@ export async function POST(
     const { pluginId } = body as { pluginId: string };
 
     if (!pluginId) {
-      return errorResponse('Plugin ID is required', 400) as NextResponse<ApiResponse<PluginInfo>>;
+      return errorResponse(ERROR_PLUGIN_ID_REQUIRED, 400) as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // おすすめプラグインリストから検索
     const recommendedPlugin = RECOMMENDED_PLUGINS.find((p) => p.id === pluginId);
     if (!recommendedPlugin) {
-      return errorResponse('Plugin not found in recommended list', 404) as NextResponse<
+      return errorResponse(ERROR_PLUGIN_NOT_IN_RECOMMENDED, 404) as NextResponse<
         ApiResponse<PluginInfo>
       >;
     }
@@ -44,9 +47,7 @@ export async function POST(
     );
 
     if (!downloadResult) {
-      return errorResponse('Failed to download plugin from Modrinth') as NextResponse<
-        ApiResponse<PluginInfo>
-      >;
+      return errorResponse(ERROR_DOWNLOAD_MODRINTH_FAILED) as NextResponse<ApiResponse<PluginInfo>>;
     }
 
     // プラグインをインストール
@@ -54,10 +55,10 @@ export async function POST(
 
     return successResponse(pluginInfo);
   } catch (error) {
-    console.error('Failed to install plugin:', error);
+    console.error(ERROR_INSTALL_PLUGIN_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to install plugin: ${errorMessage}`) as NextResponse<
-      ApiResponse<PluginInfo>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_INSTALL_PLUGIN_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<PluginInfo>>;
   }
 }

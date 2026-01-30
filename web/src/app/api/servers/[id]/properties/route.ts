@@ -1,20 +1,21 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import {
+  ERROR_GET_PROPERTIES_FAILED,
+  ERROR_UPDATE_PROPERTIES_FAILED,
+  withErrorContext,
+} from '@/lib/errorMessages';
+import {
   getServerProperties,
   type ServerProperties,
   updateServerProperties,
 } from '@/lib/serverProperties';
-import type { ApiResponse } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type { ApiResponse, ServerIdParams } from '@/types';
 
 // GET /api/servers/[id]/properties - サーバー設定取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerProperties>>> {
   try {
     const { id } = await params;
@@ -28,18 +29,18 @@ export async function GET(
 
     return successResponse(properties);
   } catch (error) {
-    console.error('Failed to get server properties:', error);
+    console.error(ERROR_GET_PROPERTIES_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to get properties: ${errorMessage}`) as NextResponse<
-      ApiResponse<ServerProperties>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_GET_PROPERTIES_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<ServerProperties>>;
   }
 }
 
 // PUT /api/servers/[id]/properties - サーバー設定更新
 export async function PUT(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerProperties>>> {
   try {
     const { id } = await params;
@@ -64,10 +65,10 @@ export async function PUT(
 
     return successResponse(properties);
   } catch (error) {
-    console.error('Failed to update server properties:', error);
+    console.error(ERROR_UPDATE_PROPERTIES_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to update properties: ${errorMessage}`) as NextResponse<
-      ApiResponse<ServerProperties>
-    >;
+    return errorResponse(
+      withErrorContext(ERROR_UPDATE_PROPERTIES_FAILED, errorMessage)
+    ) as NextResponse<ApiResponse<ServerProperties>>;
   }
 }

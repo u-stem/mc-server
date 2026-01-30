@@ -1,16 +1,18 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
+import {
+  ERROR_COMMAND_REQUIRED,
+  ERROR_RCON_CONNECTION_REFUSED,
+  ERROR_RCON_CONNECTION_TIMEOUT,
+  ERROR_SEND_COMMAND_FAILED,
+} from '@/lib/errorMessages';
 import { executeConsoleCommand } from '@/lib/rcon';
-import type { ApiResponse } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type { ApiResponse, ServerIdParams } from '@/types';
 
 // POST /api/servers/[id]/command - コマンド実行
 export async function POST(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<{ response: string }>>> {
   try {
     const { id } = await params;
@@ -24,7 +26,7 @@ export async function POST(
     const { command } = body as { command: string };
 
     if (!command || typeof command !== 'string') {
-      return errorResponse('Command is required', 400) as NextResponse<
+      return errorResponse(ERROR_COMMAND_REQUIRED, 400) as NextResponse<
         ApiResponse<{ response: string }>
       >;
     }
@@ -33,16 +35,16 @@ export async function POST(
 
     return successResponse({ response });
   } catch (error) {
-    console.error('Failed to execute command:', error);
+    console.error(ERROR_SEND_COMMAND_FAILED, error);
 
     // RCON接続エラーの場合、わかりやすいメッセージに変換
     const errorCode = (error as NodeJS.ErrnoException)?.code;
     let errorMessage: string;
 
     if (errorCode === 'ECONNREFUSED') {
-      errorMessage = 'サーバーに接続できません。サーバーが完全に起動するまでお待ちください。';
+      errorMessage = ERROR_RCON_CONNECTION_REFUSED;
     } else if (errorCode === 'ETIMEDOUT') {
-      errorMessage = '接続がタイムアウトしました。サーバーの状態を確認してください。';
+      errorMessage = ERROR_RCON_CONNECTION_TIMEOUT;
     } else {
       errorMessage = error instanceof Error ? error.message : 'Unknown error';
     }

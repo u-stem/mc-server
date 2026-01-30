@@ -38,7 +38,7 @@ describe('validateServerId', () => {
   });
 
   it('無効な ID でエラーを投げる', () => {
-    expect(() => validateServerId('invalid')).toThrow('Invalid server ID format');
+    expect(() => validateServerId('invalid')).toThrow('サーバーIDが無効です');
   });
 });
 

@@ -1,14 +1,13 @@
 import type { NextRequest, NextResponse } from 'next/server';
 import { successResponse, validateAndGetServer, withErrorHandler } from '@/lib/apiHelpers';
+import { ERROR_GET_WORLD_INFO_FAILED } from '@/lib/errorMessages';
 import { getServerWorldInfo } from '@/lib/world';
-import type { ApiResponse } from '@/types';
-
-type RouteParams = { params: Promise<{ id: string }> };
+import type { ApiResponse, ServerIdParams } from '@/types';
 
 // GET /api/servers/[id]/world - ワールド情報を取得
 export async function GET(
   _request: NextRequest,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse>> {
   const { id } = await params;
 
@@ -25,5 +24,5 @@ export async function GET(
     }
 
     return successResponse(info);
-  }, 'Failed to get world info');
+  }, ERROR_GET_WORLD_INFO_FAILED);
 }

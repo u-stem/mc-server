@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { UI_COPY_FEEDBACK_MS } from '@/lib/constants';
 import { CopyButton } from './CopyButton';
 
 interface CodeBlockProps {
@@ -38,7 +39,7 @@ export function InlineCode({ children, copyable = true, className = '' }: Inline
     try {
       await navigator.clipboard.writeText(children);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => setCopied(false), UI_COPY_FEEDBACK_MS);
     } catch (err) {
       console.error('Failed to copy:', err);
     }

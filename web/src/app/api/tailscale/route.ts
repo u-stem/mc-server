@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { NextResponse } from 'next/server';
+import { TAILSCALE_COMMAND_TIMEOUT_MS } from '@/lib/constants';
+import { ERROR_TAILSCALE_IP_NOT_FOUND, ERROR_TAILSCALE_NOT_CONNECTED } from '@/lib/errorMessages';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,7 +19,7 @@ export async function GET() {
   // ローカル実行時はtailscaleコマンドを試行
   try {
     const { stdout } = await execFileAsync('tailscale', ['ip', '-4'], {
-      timeout: 5000,
+      timeout: TAILSCALE_COMMAND_TIMEOUT_MS,
     });
 
     const ip = stdout.trim();
@@ -25,7 +27,7 @@ export async function GET() {
     if (!ip || !ip.match(/^100\.\d+\.\d+\.\d+$/)) {
       return NextResponse.json({
         success: false,
-        error: 'Tailscale IP not found',
+        error: ERROR_TAILSCALE_IP_NOT_FOUND,
       });
     }
 
@@ -36,7 +38,7 @@ export async function GET() {
   } catch {
     return NextResponse.json({
       success: false,
-      error: 'Tailscale not connected',
+      error: ERROR_TAILSCALE_NOT_CONNECTED,
     });
   }
 }

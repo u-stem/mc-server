@@ -7,19 +7,22 @@ import {
 } from '@/lib/apiHelpers';
 import { deleteServer, updateServer } from '@/lib/config';
 import { getContainerInfo, getServerStatus } from '@/lib/docker';
+import {
+  createValidationError,
+  ERROR_DELETE_SERVER_FAILED,
+  ERROR_GET_SERVER_FAILED,
+  ERROR_SERVER_NOT_FOUND,
+  ERROR_UPDATE_SERVER_FAILED,
+} from '@/lib/errorMessages';
 import { getTps } from '@/lib/rcon';
 import { CreateServerSchema } from '@/lib/validation';
-import type { ApiResponse, ServerConfig, ServerDetails, TpsInfo } from '@/types';
+import type { ApiResponse, ServerConfig, ServerDetails, ServerIdParams, TpsInfo } from '@/types';
 import { supportsTps } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 // GET /api/servers/[id] - サーバー詳細取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerDetails>>> {
   try {
     const { id } = await params;
@@ -49,15 +52,15 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Failed to get server:', error);
-    return errorResponse('Failed to get server') as NextResponse<ApiResponse<ServerDetails>>;
+    console.error(ERROR_GET_SERVER_FAILED, error);
+    return errorResponse(ERROR_GET_SERVER_FAILED) as NextResponse<ApiResponse<ServerDetails>>;
   }
 }
 
 // DELETE /api/servers/[id] - サーバー削除
 export async function DELETE(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
     const { id } = await params;
@@ -70,20 +73,20 @@ export async function DELETE(
     const deleted = await deleteServer(id);
 
     if (!deleted) {
-      return errorResponse('Server not found', 404);
+      return errorResponse(ERROR_SERVER_NOT_FOUND, 404);
     }
 
     return successResponse();
   } catch (error) {
-    console.error('Failed to delete server:', error);
-    return errorResponse('Failed to delete server');
+    console.error(ERROR_DELETE_SERVER_FAILED, error);
+    return errorResponse(ERROR_DELETE_SERVER_FAILED);
   }
 }
 
 // PUT /api/servers/[id] - サーバー設定更新
 export async function PUT(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerConfig>>> {
   try {
     const { id } = await params;
@@ -101,7 +104,7 @@ export async function PUT(
 
     if (!parseResult.success) {
       const errors = parseResult.error.issues.map((e) => e.message).join(', ');
-      return errorResponse(`Validation error: ${errors}`, 400) as NextResponse<
+      return errorResponse(createValidationError(errors), 400) as NextResponse<
         ApiResponse<ServerConfig>
       >;
     }
@@ -109,13 +112,13 @@ export async function PUT(
     const updated = await updateServer(id, parseResult.data);
 
     if (!updated) {
-      return errorResponse('Server not found', 404) as NextResponse<ApiResponse<ServerConfig>>;
+      return errorResponse(ERROR_SERVER_NOT_FOUND, 404) as NextResponse<ApiResponse<ServerConfig>>;
     }
 
     return successResponse(updated);
   } catch (error) {
-    console.error('Failed to update server:', error);
-    const message = error instanceof Error ? error.message : 'Failed to update server';
+    console.error(ERROR_UPDATE_SERVER_FAILED, error);
+    const message = error instanceof Error ? error.message : ERROR_UPDATE_SERVER_FAILED;
     return errorResponse(message) as NextResponse<ApiResponse<ServerConfig>>;
   }
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { UI_ACTION_DELAY_MS } from '@/lib/constants';
 import type { ServerDetails } from '@/types';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader } from './Card';
@@ -28,7 +29,7 @@ export function ServerCard({ server, onRefresh }: ServerCardProps) {
       });
       if (!res.ok) throw new Error('Failed to start');
       addToast('success', `${server.name} を起動しています...`);
-      setTimeout(onRefresh, 2000);
+      setTimeout(onRefresh, UI_ACTION_DELAY_MS);
     } catch (error) {
       console.error('Failed to start server:', error);
       addToast('error', 'サーバーの起動に失敗しました');
@@ -45,7 +46,7 @@ export function ServerCard({ server, onRefresh }: ServerCardProps) {
       });
       if (!res.ok) throw new Error('Failed to stop');
       addToast('success', `${server.name} を停止しました`);
-      setTimeout(onRefresh, 2000);
+      setTimeout(onRefresh, UI_ACTION_DELAY_MS);
     } catch (error) {
       console.error('Failed to stop server:', error);
       addToast('error', 'サーバーの停止に失敗しました');

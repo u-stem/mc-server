@@ -3,6 +3,15 @@ import type { TpsInfo, WhitelistEntry } from '@/types';
 import { getServer } from './config';
 import { MESSAGE_MAX_LENGTH, REASON_MAX_LENGTH, TIMEOUT_RCON_MS } from './constants';
 import { getServerStatus } from './docker';
+import {
+  createCommandNotAllowedError,
+  createRconCommandFailedError,
+  ERROR_COMMAND_IS_EMPTY,
+  ERROR_INVALID_PLAYER_NAME_FORMAT,
+  ERROR_MESSAGE_EMPTY_OR_INVALID,
+  ERROR_SERVER_NOT_FOUND,
+  ERROR_WHITELIST_FILE_NOT_FOUND,
+} from './errorMessages';
 import { isValidPlayerName, validateServerId } from './validation';
 
 // RCON設定
@@ -16,7 +25,7 @@ async function createRconConnection(serverId: string): Promise<Rcon> {
   const server = await getServer(serverId);
 
   if (!server) {
-    throw new Error('Server not found');
+    throw new Error(ERROR_SERVER_NOT_FOUND);
   }
 
   const rcon = await Rcon.connect({
@@ -59,7 +68,7 @@ export async function getWhitelist(serverId: string): Promise<WhitelistEntry[]> 
   const server = await getServer(serverId);
 
   if (!server) {
-    throw new Error('Server not found');
+    throw new Error(ERROR_SERVER_NOT_FOUND);
   }
 
   // whitelist.json を直接読む方が確実
@@ -86,7 +95,7 @@ export async function addToWhitelist(serverId: string, playerName: string): Prom
 
   // プレイヤー名をバリデーション
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   const running = await isServerRunning(serverId);
@@ -98,9 +107,7 @@ export async function addToWhitelist(serverId: string, playerName: string): Prom
       return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `RCON command failed: ${message}. サーバーの起動が完了していない可能性があります。`
-      );
+      throw new Error(createRconCommandFailedError(message));
     }
   }
 
@@ -148,7 +155,7 @@ export async function removeFromWhitelist(serverId: string, playerName: string):
 
   // プレイヤー名をバリデーション
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   const running = await isServerRunning(serverId);
@@ -160,9 +167,7 @@ export async function removeFromWhitelist(serverId: string, playerName: string):
       return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `RCON command failed: ${message}. サーバーの起動が完了していない可能性があります。`
-      );
+      throw new Error(createRconCommandFailedError(message));
     }
   }
 
@@ -179,7 +184,7 @@ export async function removeFromWhitelist(serverId: string, playerName: string):
     const content = await fs.readFile(whitelistPath, 'utf-8');
     whitelist = JSON.parse(content);
   } catch {
-    return `Whitelist file not found`;
+    return ERROR_WHITELIST_FILE_NOT_FOUND;
   }
 
   const index = whitelist.findIndex(
@@ -239,7 +244,7 @@ export async function sendMessage(serverId: string, message: string): Promise<st
     .slice(0, MESSAGE_MAX_LENGTH);
 
   if (!sanitizedMessage) {
-    throw new Error('Message is empty or contains only invalid characters');
+    throw new Error(ERROR_MESSAGE_EMPTY_OR_INVALID);
   }
 
   return executeCommand(serverId, `say ${sanitizedMessage}`);
@@ -278,7 +283,7 @@ export async function executeConsoleCommand(serverId: string, command: string): 
   // コマンドをトリム
   const trimmedCommand = command.trim();
   if (!trimmedCommand) {
-    throw new Error('Command is empty');
+    throw new Error(ERROR_COMMAND_IS_EMPTY);
   }
 
   // コマンドの先頭部分を取得（/ があれば除去）
@@ -289,9 +294,7 @@ export async function executeConsoleCommand(serverId: string, command: string): 
 
   // 許可リストをチェック
   if (!ALLOWED_COMMANDS.includes(baseCommand as (typeof ALLOWED_COMMANDS)[number])) {
-    throw new Error(
-      `Command "${baseCommand}" is not allowed. Allowed commands: ${ALLOWED_COMMANDS.join(', ')}`
-    );
+    throw new Error(createCommandNotAllowedError(baseCommand, ALLOWED_COMMANDS));
   }
 
   return executeCommand(serverId, commandWithoutSlash);
@@ -306,7 +309,7 @@ export async function banPlayer(
   validateServerId(serverId);
 
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   const command = reason
@@ -321,7 +324,7 @@ export async function pardonPlayer(serverId: string, playerName: string): Promis
   validateServerId(serverId);
 
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   return executeCommand(serverId, `pardon ${playerName}`);
@@ -336,7 +339,7 @@ export async function kickPlayer(
   validateServerId(serverId);
 
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   const command = reason
@@ -351,7 +354,7 @@ export async function opPlayer(serverId: string, playerName: string): Promise<st
   validateServerId(serverId);
 
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   return executeCommand(serverId, `op ${playerName}`);
@@ -362,7 +365,7 @@ export async function deopPlayer(serverId: string, playerName: string): Promise<
   validateServerId(serverId);
 
   if (!isValidPlayerName(playerName)) {
-    throw new Error('Invalid player name format');
+    throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
   return executeCommand(serverId, `deop ${playerName}`);

@@ -1,3 +1,5 @@
+import { DEFAULT_MAX_TICK_TIME } from '@/lib/constants';
+
 // サーバー設定プロパティの定義
 export interface PropertyDefinition {
   key: string;
@@ -94,7 +96,13 @@ export const PROPERTY_CATEGORIES: Record<string, PropertyCategoryDefinition> = {
         min: 3,
         max: 32,
       },
-      { key: 'max-tick-time', label: '最大Tick時間（ms）', type: 'number', min: -1, max: 60000 },
+      {
+        key: 'max-tick-time',
+        label: '最大Tick時間（ms）',
+        type: 'number',
+        min: -1,
+        max: DEFAULT_MAX_TICK_TIME,
+      },
       {
         key: 'network-compression-threshold',
         label: 'ネットワーク圧縮閾値',

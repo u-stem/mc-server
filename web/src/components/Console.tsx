@@ -24,10 +24,11 @@ interface LogEntry {
   line: string;
 }
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'unknown';
+// Minecraftサーバーログのログレベル（lib/loggerのLogLevelとは異なる用途）
+type McLogLevel = 'info' | 'warn' | 'error' | 'debug' | 'unknown';
 
 // ログ行からログレベルを判定
-function getLogLevel(line: string): LogLevel {
+function getLogLevel(line: string): McLogLevel {
   // Minecraftサーバーログ形式: [HH:MM:SS] [Thread/LEVEL]: message
   // または: [HH:MM:SS LEVEL]: message
   const levelMatch = line.match(
@@ -67,7 +68,7 @@ function getLogLevel(line: string): LogLevel {
 }
 
 // ログレベルに応じた色クラスを返す
-function getLogColorClass(level: LogLevel): string {
+function getLogColorClass(level: McLogLevel): string {
   switch (level) {
     case 'info':
       return 'text-gray-300';

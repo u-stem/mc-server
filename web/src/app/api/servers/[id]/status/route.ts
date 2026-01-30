@@ -1,18 +1,15 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { getContainerInfo, getServerStatus } from '@/lib/docker';
+import { ERROR_GET_STATUS_FAILED } from '@/lib/errorMessages';
 import { getTps } from '@/lib/rcon';
-import type { ApiResponse, ServerStatus, TpsInfo } from '@/types';
+import type { ApiResponse, ServerIdParams, ServerStatus, TpsInfo } from '@/types';
 import { supportsTps } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 // GET /api/servers/[id]/status - ステータス取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<ServerStatus>>> {
   try {
     const { id } = await params;
@@ -39,7 +36,7 @@ export async function GET(
       tps,
     });
   } catch (error) {
-    console.error('Failed to get server status:', error);
-    return errorResponse('Failed to get server status') as NextResponse<ApiResponse<ServerStatus>>;
+    console.error(ERROR_GET_STATUS_FAILED, error);
+    return errorResponse(ERROR_GET_STATUS_FAILED) as NextResponse<ApiResponse<ServerStatus>>;
   }
 }

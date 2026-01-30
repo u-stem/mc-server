@@ -1,16 +1,13 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
 import { startServer } from '@/lib/docker';
-import type { ApiResponse } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { ERROR_START_SERVER_FAILED, withErrorContext } from '@/lib/errorMessages';
+import type { ApiResponse, ServerIdParams } from '@/types';
 
 // POST /api/servers/[id]/start - サーバー起動
 export async function POST(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
     const { id } = await params;
@@ -24,8 +21,8 @@ export async function POST(
 
     return successResponse({ message: `Server ${result.server.name} is starting` });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error(ERROR_START_SERVER_FAILED, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return errorResponse(`Failed to start server: ${errorMessage}`);
+    return errorResponse(withErrorContext(ERROR_START_SERVER_FAILED, errorMessage));
   }
 }

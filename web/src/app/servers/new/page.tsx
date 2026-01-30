@@ -11,6 +11,15 @@ import { Input } from '@/components/Input';
 import { PresetSelector } from '@/components/PresetSelector';
 import { Select } from '@/components/Select';
 import { useToast } from '@/components/Toast';
+import {
+  DEFAULT_BEDROCK_PORT,
+  DEFAULT_JAVA_PORT,
+  DEFAULT_RCON_PORT,
+  MAX_PLAYERS_MAX,
+  PORT_MAX,
+  PORT_MIN,
+  SERVER_NAME_MAX_LENGTH,
+} from '@/lib/constants';
 import { LABEL_BACK } from '@/lib/messages';
 import type {
   ApiResponse,
@@ -64,9 +73,18 @@ const memoryOptions = [
 // Java版用バリデーションスキーマ
 const javaServerSchema = z
   .object({
-    name: z.string().min(1, 'サーバー名は必須です').max(50, 'サーバー名は50文字以内'),
-    port: z.number().min(1024, 'ポートは1024以上').max(65535, 'ポートは65535以下'),
-    rconPort: z.number().min(1024, 'RCONポートは1024以上').max(65535, 'RCONポートは65535以下'),
+    name: z
+      .string()
+      .min(1, 'サーバー名は必須です')
+      .max(SERVER_NAME_MAX_LENGTH, `サーバー名は${SERVER_NAME_MAX_LENGTH}文字以内`),
+    port: z
+      .number()
+      .min(PORT_MIN, `ポートは${PORT_MIN}以上`)
+      .max(PORT_MAX, `ポートは${PORT_MAX}以下`),
+    rconPort: z
+      .number()
+      .min(PORT_MIN, `RCONポートは${PORT_MIN}以上`)
+      .max(PORT_MAX, `RCONポートは${PORT_MAX}以下`),
     rconPassword: z.string().min(8, 'パスワードは8文字以上'),
     version: z.string().min(1, 'バージョンは必須です'),
     type: z.enum([
@@ -84,11 +102,11 @@ const javaServerSchema = z
       'CATSERVER',
     ]),
     memory: z.string(),
-    maxPlayers: z.number().min(1, '最小1人').max(100, '最大100人'),
+    maxPlayers: z.number().min(1, '最小1人').max(MAX_PLAYERS_MAX, `最大${MAX_PLAYERS_MAX}人`),
     presetId: z.string().optional(),
     advancedSettings: z.record(z.string(), z.unknown()).optional(),
     edition: z.literal('java').optional(),
-    geyserPort: z.number().min(1024).max(65535).optional(),
+    geyserPort: z.number().min(PORT_MIN).max(PORT_MAX).optional(),
   })
   .refine((data) => data.port !== data.rconPort, {
     message: 'ゲームポートとRCONポートは異なる値にしてください',
@@ -105,14 +123,20 @@ const javaServerSchema = z
 
 // Bedrock版用バリデーションスキーマ
 const bedrockServerSchema = z.object({
-  name: z.string().min(1, 'サーバー名は必須です').max(50, 'サーバー名は50文字以内'),
-  port: z.number().min(1024, 'ポートは1024以上').max(65535, 'ポートは65535以下'),
+  name: z
+    .string()
+    .min(1, 'サーバー名は必須です')
+    .max(SERVER_NAME_MAX_LENGTH, `サーバー名は${SERVER_NAME_MAX_LENGTH}文字以内`),
+  port: z
+    .number()
+    .min(PORT_MIN, `ポートは${PORT_MIN}以上`)
+    .max(PORT_MAX, `ポートは${PORT_MAX}以下`),
   rconPort: z.number().optional(),
   rconPassword: z.string().optional(),
   version: z.string().min(1, 'バージョンは必須です'),
   type: z.literal('BEDROCK'),
   memory: z.string(),
-  maxPlayers: z.number().min(1, '最小1人').max(100, '最大100人'),
+  maxPlayers: z.number().min(1, '最小1人').max(MAX_PLAYERS_MAX, `最大${MAX_PLAYERS_MAX}人`),
   presetId: z.string().optional(),
   advancedSettings: z.record(z.string(), z.unknown()).optional(),
   edition: z.literal('bedrock'),
@@ -139,8 +163,8 @@ export default function NewServerPage() {
   const [selectedEdition, setSelectedEdition] = useState<ServerEdition>('java');
   const [formData, setFormData] = useState<CreateServerRequest>({
     name: '',
-    port: 25565,
-    rconPort: 25575,
+    port: DEFAULT_JAVA_PORT,
+    rconPort: DEFAULT_RCON_PORT,
     rconPassword: '',
     version: '1.21.1',
     type: 'FABRIC',
@@ -161,7 +185,7 @@ export default function NewServerPage() {
         ...prev,
         edition: 'bedrock',
         type: 'BEDROCK',
-        port: 19132, // Bedrockのデフォルトポート
+        port: DEFAULT_BEDROCK_PORT,
         rconPort: 0, // BedrockはRCONなし
         rconPassword: '',
         version: '1.21.50', // Bedrockのバージョン
@@ -171,8 +195,8 @@ export default function NewServerPage() {
         ...prev,
         edition: 'java',
         type: 'FABRIC',
-        port: 25565,
-        rconPort: 25575,
+        port: DEFAULT_JAVA_PORT,
+        rconPort: DEFAULT_RCON_PORT,
         rconPassword: '',
         version: '1.21.1',
       }));
@@ -198,7 +222,7 @@ export default function NewServerPage() {
           );
 
           if (selectedEdition === 'java') {
-            const availableGamePort = findAvailablePort(usedPorts, 25565);
+            const availableGamePort = findAvailablePort(usedPorts, DEFAULT_JAVA_PORT);
             const availableRconPort = findAvailablePort(
               [...usedPorts, availableGamePort],
               availableGamePort + 10
@@ -211,7 +235,7 @@ export default function NewServerPage() {
             }));
           } else {
             // Bedrock版
-            const availablePort = findAvailablePort(usedPorts, 19132);
+            const availablePort = findAvailablePort(usedPorts, DEFAULT_BEDROCK_PORT);
             setFormData((prev) => ({
               ...prev,
               port: availablePort,
@@ -429,7 +453,7 @@ export default function NewServerPage() {
                 max={65535}
                 required
                 error={fieldErrors.port}
-                helperText="統合版のデフォルトは19132"
+                helperText={`統合版のデフォルトは${DEFAULT_BEDROCK_PORT}`}
               />
             )}
 

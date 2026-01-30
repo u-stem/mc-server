@@ -41,10 +41,35 @@ async function runDockerCompose(
 // サーバー起動
 export async function startServer(serverId: string): Promise<void> {
   await runDockerCompose(serverId, ['up', '-d']);
+
+  // イベントフック（非同期で実行）
+  import('./automationScheduler').then(({ onServerStart }) => {
+    onServerStart(serverId).catch(() => {
+      // エラーは無視（ログは内部で出力される）
+    });
+  });
 }
 
 // サーバー停止
 export async function stopServer(serverId: string): Promise<void> {
+  // 意図的な停止をマーク（クラッシュ検出の誤検知防止）
+  try {
+    const { markServerStopping } = await import('./automationScheduler');
+    markServerStopping(serverId);
+  } catch {
+    // マーク失敗は無視
+  }
+
+  // イベントフック（停止前に実行）
+  try {
+    const { onServerStop } = await import('./automationScheduler');
+    await onServerStop(serverId);
+  } catch (error) {
+    // バックアップ等の失敗はログに記録するが、停止処理は続行
+    const { logger } = await import('./logger');
+    logger.error(`[Docker] Pre-stop hook failed for ${serverId}:`, error);
+  }
+
   await runDockerCompose(serverId, ['down']);
 }
 

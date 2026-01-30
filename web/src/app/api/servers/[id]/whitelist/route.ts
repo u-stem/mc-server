@@ -1,17 +1,14 @@
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
+import { ERROR_ADD_WHITELIST_FAILED, ERROR_GET_WHITELIST_FAILED } from '@/lib/errorMessages';
 import { addToWhitelist, getWhitelist } from '@/lib/rcon';
 import { AddPlayerSchema } from '@/lib/validation';
-import type { ApiResponse, WhitelistEntry } from '@/types';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type { ApiResponse, ServerIdParams, WhitelistEntry } from '@/types';
 
 // GET /api/servers/[id]/whitelist - ホワイトリスト取得
 export async function GET(
   _request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse<WhitelistEntry[]>>> {
   try {
     const { id } = await params;
@@ -25,15 +22,15 @@ export async function GET(
 
     return successResponse(whitelist);
   } catch (error) {
-    console.error('Failed to get whitelist:', error);
-    return errorResponse('Failed to get whitelist') as NextResponse<ApiResponse<WhitelistEntry[]>>;
+    console.error(ERROR_GET_WHITELIST_FAILED, error);
+    return errorResponse(ERROR_GET_WHITELIST_FAILED) as NextResponse<ApiResponse<WhitelistEntry[]>>;
   }
 }
 
 // POST /api/servers/[id]/whitelist - プレイヤー追加
 export async function POST(
   request: Request,
-  { params }: RouteParams
+  { params }: ServerIdParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
     const { id } = await params;
@@ -56,7 +53,7 @@ export async function POST(
 
     return successResponse({ message: rconResult });
   } catch (error) {
-    console.error('Failed to add to whitelist:', error);
-    return errorResponse('Failed to add player to whitelist');
+    console.error(ERROR_ADD_WHITELIST_FAILED, error);
+    return errorResponse(ERROR_ADD_WHITELIST_FAILED);
   }
 }

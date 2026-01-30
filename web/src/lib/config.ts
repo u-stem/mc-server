@@ -17,6 +17,11 @@ import {
   FOLDER_BACKUPS,
   FOLDER_DATA,
 } from './constants';
+import {
+  createPortInUseError,
+  ERROR_GAME_RCON_PORT_MUST_DIFFER,
+  ERROR_GEYSER_PORT_MUST_DIFFER,
+} from './errorMessages';
 import { applyOptimizations } from './optimization';
 
 // プロジェクトルートパス（環境変数で上書き可能）
@@ -109,7 +114,7 @@ export async function createServer(request: CreateServerRequest): Promise<Server
   // ポート重複チェック
   const gamePortInUse = await isPortInUse(request.port);
   if (gamePortInUse) {
-    throw new Error(`Port ${request.port} is already in use by another server`);
+    throw new Error(createPortInUseError('ゲーム', request.port));
   }
 
   // BedrockサーバーはRCONがないため、RCONポートのチェックをスキップ
@@ -118,12 +123,12 @@ export async function createServer(request: CreateServerRequest): Promise<Server
   if (!isBedrock && request.rconPort) {
     const rconPortInUse = await isPortInUse(request.rconPort);
     if (rconPortInUse) {
-      throw new Error(`RCON port ${request.rconPort} is already in use by another server`);
+      throw new Error(createPortInUseError('RCON', request.rconPort));
     }
 
     // 同じポートを使用していないかチェック
     if (request.port === request.rconPort) {
-      throw new Error('Game port and RCON port must be different');
+      throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
     }
   }
 
@@ -131,10 +136,10 @@ export async function createServer(request: CreateServerRequest): Promise<Server
   if (request.geyserPort) {
     const geyserPortInUse = await isPortInUse(request.geyserPort);
     if (geyserPortInUse) {
-      throw new Error(`GeyserMC port ${request.geyserPort} is already in use by another server`);
+      throw new Error(createPortInUseError('GeyserMC', request.geyserPort));
     }
     if (request.geyserPort === request.port || request.geyserPort === request.rconPort) {
-      throw new Error('GeyserMC port must be different from game port and RCON port');
+      throw new Error(ERROR_GEYSER_PORT_MUST_DIFFER);
     }
   }
 
@@ -179,14 +184,14 @@ export async function updateServer(
   if (updates.port !== undefined) {
     const gamePortInUse = await isPortInUse(updates.port, id);
     if (gamePortInUse) {
-      throw new Error(`Port ${updates.port} is already in use by another server`);
+      throw new Error(createPortInUseError('ゲーム', updates.port));
     }
   }
 
   if (updates.rconPort !== undefined) {
     const rconPortInUse = await isPortInUse(updates.rconPort, id);
     if (rconPortInUse) {
-      throw new Error(`RCON port ${updates.rconPort} is already in use by another server`);
+      throw new Error(createPortInUseError('RCON', updates.rconPort));
     }
   }
 
@@ -194,7 +199,7 @@ export async function updateServer(
   const newPort = updates.port ?? config.servers[index].port;
   const newRconPort = updates.rconPort ?? config.servers[index].rconPort;
   if (newPort === newRconPort) {
-    throw new Error('Game port and RCON port must be different');
+    throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
   }
 
   config.servers[index] = {
@@ -220,6 +225,14 @@ export async function deleteServer(id: string): Promise<boolean> {
 
   config.servers.splice(index, 1);
   await saveConfig(config);
+
+  // オートメーション関連のメモリ状態をクリーンアップ
+  try {
+    const { cleanupServerState } = await import('./automationScheduler');
+    cleanupServerState(id);
+  } catch {
+    // クリーンアップ失敗は無視
+  }
 
   // サーバーディレクトリを削除（オプション）
   // const serverDir = path.join(SERVERS_DIR, id);
