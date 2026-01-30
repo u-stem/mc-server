@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ApiResponse, AutomationConfig } from '@/types';
 import { DEFAULT_AUTOMATION_CONFIG } from '@/types';
 import { AutoBackupSettings } from './AutoBackupSettings';
-import { Card, CardContent, CardHeader } from './Card';
+import { Card, CardContent } from './Card';
 import { DiscordSettings } from './DiscordSettings';
 import { HealthCheckSettings } from './HealthCheckSettings';
 import { PluginUpdateSettings } from './PluginUpdateSettings';
@@ -82,15 +82,6 @@ export function AutomationSettings({ serverId, serverType }: AutomationSettingsP
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-lg">オートメーション</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            Discord通知、自動バックアップ、ヘルスチェックなどの自動化設定
-          </p>
-        </CardHeader>
-      </Card>
-
       <DiscordSettings
         serverId={serverId}
         config={config.discord}
