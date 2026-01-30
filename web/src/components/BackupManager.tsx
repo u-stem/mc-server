@@ -1,5 +1,6 @@
 'use client';
 
+import { Archive } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { MSG_LOADING, MSG_NO_BACKUPS } from '@/lib/messages';
 import { formatDate, formatSize } from '@/lib/utils';
@@ -91,7 +92,7 @@ export function BackupManager({ serverId }: BackupManagerProps) {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                    <span className="text-blue-400 text-lg">📦</span>
+                    <Archive className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">{backup.filename}</p>

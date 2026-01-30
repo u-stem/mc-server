@@ -30,11 +30,32 @@ import {
   MSG_SERVER_NOT_FOUND,
   MSG_SERVER_NOT_FOUND_DESC,
 } from '@/lib/messages';
-import type { ApiResponse, ModInfo, PluginInfo, ServerDetails } from '@/types';
-import { getPresetById, isBedrockServer, isModServer, isPluginServer } from '@/types';
+import type { ApiResponse, ModInfo, PluginInfo, ServerDetails, TpsInfo } from '@/types';
+import { getPresetById, isBedrockServer, isModServer, isPluginServer, supportsTps } from '@/types';
 
 interface PageProps {
   params: Promise<{ serverId: string }>;
+}
+
+// TPSに応じた色クラスを返す
+function getTpsColorClass(tps: number): string {
+  if (tps >= 19.5) return 'text-green-400';
+  if (tps >= 18) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+// TPS表示コンポーネント
+function TpsDisplay({ tps }: { tps: TpsInfo }) {
+  return (
+    <div className="flex items-baseline gap-1">
+      <span className={`text-lg font-mono ${getTpsColorClass(tps.tps1m)}`}>
+        {tps.tps1m.toFixed(1)}
+      </span>
+      <span className="text-xs text-gray-500">
+        ({tps.tps5m.toFixed(1)}, {tps.tps15m.toFixed(1)})
+      </span>
+    </div>
+  );
 }
 
 type TabId =
@@ -368,6 +389,19 @@ export default function ServerDetailPage({ params }: PageProps) {
                 {server.status.memory ? server.status.memory.used : '-'}
               </p>
             </div>
+            {supportsTps(server.type) && (
+              <div className="bg-gray-800 rounded-lg p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  TPS
+                  <span className="ml-1 text-gray-600 normal-case">(1m, 5m, 15m)</span>
+                </p>
+                {server.status.tps ? (
+                  <TpsDisplay tps={server.status.tps} />
+                ) : (
+                  <p className="text-lg font-mono text-gray-500">-</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

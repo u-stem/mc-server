@@ -1,5 +1,5 @@
 import { Rcon } from 'rcon-client';
-import type { WhitelistEntry } from '@/types';
+import type { TpsInfo, WhitelistEntry } from '@/types';
 import { getServer } from './config';
 import { MESSAGE_MAX_LENGTH, REASON_MAX_LENGTH, TIMEOUT_RCON_MS } from './constants';
 import { getServerStatus } from './docker';
@@ -248,6 +248,7 @@ export async function sendMessage(serverId: string, message: string): Promise<st
 // 許可されたコマンドのリスト
 const ALLOWED_COMMANDS = [
   'list',
+  'tps',
   'whitelist',
   'ban',
   'ban-ip',
@@ -365,4 +366,54 @@ export async function deopPlayer(serverId: string, playerName: string): Promise<
   }
 
   return executeCommand(serverId, `deop ${playerName}`);
+}
+
+// TPS取得（Paper/Spigot系のみ）
+export async function getTps(serverId: string): Promise<TpsInfo | null> {
+  validateServerId(serverId);
+
+  try {
+    const response = await executeCommand(serverId, 'tps');
+
+    // Paper/Spigot形式: "§6TPS from last 1m, 5m, 15m: §a20.0§r, §a20.0§r, §a20.0"
+    // Minecraft色コード（§x）を除去
+    const cleanResponse = response.replace(/§[0-9a-fk-or]/gi, '');
+
+    // TPS値を抽出（カンマ区切り、スペースあり）
+    const tpsMatch = cleanResponse.match(
+      /TPS from last 1m, 5m, 15m:\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i
+    );
+
+    if (tpsMatch) {
+      const tps1m = parseFloat(tpsMatch[1]);
+      const tps5m = parseFloat(tpsMatch[2]);
+      const tps15m = parseFloat(tpsMatch[3]);
+
+      if (!Number.isNaN(tps1m) && !Number.isNaN(tps5m) && !Number.isNaN(tps15m)) {
+        return { tps1m, tps5m, tps15m };
+      }
+    }
+
+    // Paper 1.20+形式: "TPS from last 5s, 1m, 5m, 15m: 20.0, 20.0, 20.0, 20.0"
+    const newTpsMatch = cleanResponse.match(
+      /TPS from last 5s, 1m, 5m, 15m:\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i
+    );
+
+    if (newTpsMatch) {
+      // 5s, 1m, 5m, 15m の順なので、インデックス2, 3, 4を使用
+      const tps1m = parseFloat(newTpsMatch[2]);
+      const tps5m = parseFloat(newTpsMatch[3]);
+      const tps15m = parseFloat(newTpsMatch[4]);
+
+      if (!Number.isNaN(tps1m) && !Number.isNaN(tps5m) && !Number.isNaN(tps15m)) {
+        return { tps1m, tps5m, tps15m };
+      }
+    }
+
+    console.warn('[TPS] Failed to parse response:', response, '-> cleaned:', cleanResponse);
+    return null;
+  } catch (error) {
+    console.error('[TPS] Error getting TPS:', error);
+    return null;
+  }
 }

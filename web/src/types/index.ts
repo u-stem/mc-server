@@ -2,6 +2,18 @@
 
 // API types
 export type { ApiResponse, VersionUpdateRequest, VersionUpdateResponse } from './api';
+// Optimization types
+export type {
+  BukkitOptimization,
+  OptimizationProfile,
+  PaperGlobalOptimization,
+  PaperWorldOptimization,
+  PurpurOptimization,
+  ServerPropertiesOptimization,
+  ServerTypeConfigSupport,
+  ServerTypeConfigSupportMap,
+  SpigotOptimization,
+} from './optimization';
 // Plugin/Mod types
 export type { ModInfo, PluginInfo } from './plugin';
 // Preset types
@@ -27,6 +39,7 @@ export type {
   ServerStatus,
   ServersConfigFile,
   ServerType,
+  TpsInfo,
   WhitelistEntry,
 } from './server';
 export {
@@ -36,4 +49,6 @@ export {
   isPluginServer,
   MOD_SERVER_TYPES,
   PLUGIN_SERVER_TYPES,
+  supportsTps,
+  TPS_SUPPORTED_SERVER_TYPES,
 } from './server';

@@ -24,6 +24,87 @@ interface LogEntry {
   line: string;
 }
 
+type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'unknown';
+
+// ログ行からログレベルを判定
+function getLogLevel(line: string): LogLevel {
+  // Minecraftサーバーログ形式: [HH:MM:SS] [Thread/LEVEL]: message
+  // または: [HH:MM:SS LEVEL]: message
+  const levelMatch = line.match(
+    /\[([\w\s-]+)\/(INFO|WARN|ERROR|DEBUG|FATAL)\]:|^\[[\d:]+\s+(INFO|WARN|ERROR|DEBUG)\]:/i
+  );
+
+  if (levelMatch) {
+    const level = (levelMatch[2] || levelMatch[3] || '').toUpperCase();
+    switch (level) {
+      case 'INFO':
+        return 'info';
+      case 'WARN':
+      case 'WARNING':
+        return 'warn';
+      case 'ERROR':
+      case 'FATAL':
+        return 'error';
+      case 'DEBUG':
+        return 'debug';
+    }
+  }
+
+  // フォールバック: 行内にキーワードがあるか確認
+  const lowerLine = line.toLowerCase();
+  if (
+    lowerLine.includes('error') ||
+    lowerLine.includes('exception') ||
+    lowerLine.includes('failed')
+  ) {
+    return 'error';
+  }
+  if (lowerLine.includes('warn')) {
+    return 'warn';
+  }
+
+  return 'unknown';
+}
+
+// ログレベルに応じた色クラスを返す
+function getLogColorClass(level: LogLevel): string {
+  switch (level) {
+    case 'info':
+      return 'text-gray-300';
+    case 'warn':
+      return 'text-yellow-400';
+    case 'error':
+      return 'text-red-400';
+    case 'debug':
+      return 'text-gray-500';
+    default:
+      return 'text-gray-300';
+  }
+}
+
+// ログ行をパーツに分割して色付け表示するコンポーネント
+function LogLine({ line }: { line: string }) {
+  const level = getLogLevel(line);
+
+  // タイムスタンプ部分を抽出: [HH:MM:SS] または [YYYY-MM-DD HH:MM:SS]
+  const timestampMatch = line.match(/^(\[[\d\-:\s]+\])/);
+
+  if (timestampMatch) {
+    const timestamp = timestampMatch[1];
+    const rest = line.slice(timestamp.length);
+
+    return (
+      <div className="whitespace-pre-wrap break-all">
+        <span className="text-gray-500">{timestamp}</span>
+        <span className={getLogColorClass(level)}>{rest}</span>
+      </div>
+    );
+  }
+
+  // タイムスタンプがない場合はそのまま表示
+  return <div className={`whitespace-pre-wrap break-all ${getLogColorClass(level)}`}>{line}</div>;
+}
+
 let logIdCounter = 0;
 
 export function Console({ serverId, isRunning }: ConsoleProps) {
@@ -183,11 +264,7 @@ export function Console({ serverId, isRunning }: ConsoleProps) {
             ) : serverLogs.length === 0 ? (
               <div className="text-gray-500 text-center py-8">ログを読み込み中...</div>
             ) : (
-              serverLogs.map((log) => (
-                <div key={log.id} className="text-gray-300 whitespace-pre-wrap break-all">
-                  {log.line}
-                </div>
-              ))
+              serverLogs.map((log) => <LogLine key={log.id} line={log.line} />)
             )}
           </div>
         </div>
