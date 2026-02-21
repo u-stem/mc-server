@@ -148,7 +148,7 @@ const serverConfig = {
   rconPort: 25575,
   rconPassword: 'test',
   version: '1.21.1',
-  type: 'PAPER',
+  type: 'PAPER' as const,
   memory: '4G',
   maxPlayers: 10,
   createdAt: '',

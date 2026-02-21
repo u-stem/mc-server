@@ -13,7 +13,7 @@ describe('logger', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    process.env.NODE_ENV = originalEnv;
+    (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
     setLogLevel(LogLevel.DEBUG);
   });
 
