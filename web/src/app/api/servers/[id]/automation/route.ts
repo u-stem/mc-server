@@ -5,7 +5,7 @@
  */
 import type { NextResponse } from 'next/server';
 import { errorResponse, successResponse, validateAndGetServer } from '@/lib/apiHelpers';
-import { getAutomationConfig, saveAutomationConfig } from '@/lib/automation';
+import { getAutomationConfig, saveAutomationConfig, withStateFileLock } from '@/lib/automation';
 import {
   INTERVAL_HEALTH_CHECK_MIN_SECONDS,
   MIN_BACKUP_RETENTION_COUNT,
@@ -55,76 +55,79 @@ export async function PUT(
 
     const body: Partial<AutomationConfig> = await request.json();
 
-    // 既存の設定とマージ（ネストされたオブジェクトも深くマージ）
-    const currentConfig = await getAutomationConfig(id);
-    const newConfig: AutomationConfig = {
-      discord: {
-        ...currentConfig.discord,
-        ...body.discord,
-        alertThresholds: {
-          ...currentConfig.discord.alertThresholds,
-          ...body.discord?.alertThresholds,
+    // Wrap the read-modify-write cycle in a lock to prevent concurrent overwrites
+    return await withStateFileLock(id, 'automation', async () => {
+      // 既存の設定とマージ（ネストされたオブジェクトも深くマージ）
+      const currentConfig = await getAutomationConfig(id);
+      const newConfig: AutomationConfig = {
+        discord: {
+          ...currentConfig.discord,
+          ...body.discord,
+          alertThresholds: {
+            ...currentConfig.discord.alertThresholds,
+            ...body.discord?.alertThresholds,
+          },
         },
-      },
-      backup: {
-        ...currentConfig.backup,
-        ...body.backup,
-        retention: {
-          ...currentConfig.backup.retention,
-          ...body.backup?.retention,
+        backup: {
+          ...currentConfig.backup,
+          ...body.backup,
+          retention: {
+            ...currentConfig.backup.retention,
+            ...body.backup?.retention,
+          },
         },
-      },
-      pluginUpdate: { ...currentConfig.pluginUpdate, ...body.pluginUpdate },
-      healthCheck: { ...currentConfig.healthCheck, ...body.healthCheck },
-    };
+        pluginUpdate: { ...currentConfig.pluginUpdate, ...body.pluginUpdate },
+        healthCheck: { ...currentConfig.healthCheck, ...body.healthCheck },
+      };
 
-    // バリデーション
-    if (newConfig.discord.enabled) {
-      if (!newConfig.discord.webhookUrl) {
-        return errorResponse(ERROR_WEBHOOK_URL_REQUIRED_WHEN_ENABLED, 400) as NextResponse<
-          ApiResponse<AutomationConfig>
-        >;
+      // バリデーション
+      if (newConfig.discord.enabled) {
+        if (!newConfig.discord.webhookUrl) {
+          return errorResponse(ERROR_WEBHOOK_URL_REQUIRED_WHEN_ENABLED, 400) as NextResponse<
+            ApiResponse<AutomationConfig>
+          >;
+        }
+        if (!isValidDiscordWebhookUrl(newConfig.discord.webhookUrl)) {
+          return errorResponse(ERROR_INVALID_DISCORD_WEBHOOK_FORMAT, 400) as NextResponse<
+            ApiResponse<AutomationConfig>
+          >;
+        }
       }
-      if (!isValidDiscordWebhookUrl(newConfig.discord.webhookUrl)) {
-        return errorResponse(ERROR_INVALID_DISCORD_WEBHOOK_FORMAT, 400) as NextResponse<
-          ApiResponse<AutomationConfig>
-        >;
-      }
-    }
 
-    if (newConfig.backup.enabled) {
-      if (newConfig.backup.retention.maxCount < MIN_BACKUP_RETENTION_COUNT) {
-        return errorResponse(
-          createMinValueError('バックアップ保持数', MIN_BACKUP_RETENTION_COUNT),
-          400
-        ) as NextResponse<ApiResponse<AutomationConfig>>;
+      if (newConfig.backup.enabled) {
+        if (newConfig.backup.retention.maxCount < MIN_BACKUP_RETENTION_COUNT) {
+          return errorResponse(
+            createMinValueError('バックアップ保持数', MIN_BACKUP_RETENTION_COUNT),
+            400
+          ) as NextResponse<ApiResponse<AutomationConfig>>;
+        }
+        if (newConfig.backup.retention.maxAgeDays < MIN_BACKUP_RETENTION_DAYS) {
+          return errorResponse(
+            createMinValueError('バックアップ保持日数', MIN_BACKUP_RETENTION_DAYS, '日'),
+            400
+          ) as NextResponse<ApiResponse<AutomationConfig>>;
+        }
       }
-      if (newConfig.backup.retention.maxAgeDays < MIN_BACKUP_RETENTION_DAYS) {
-        return errorResponse(
-          createMinValueError('バックアップ保持日数', MIN_BACKUP_RETENTION_DAYS, '日'),
-          400
-        ) as NextResponse<ApiResponse<AutomationConfig>>;
-      }
-    }
 
-    if (newConfig.healthCheck.enabled) {
-      if (newConfig.healthCheck.checkIntervalSeconds < INTERVAL_HEALTH_CHECK_MIN_SECONDS) {
-        return errorResponse(
-          createMinValueError('ヘルスチェック間隔', INTERVAL_HEALTH_CHECK_MIN_SECONDS, '秒'),
-          400
-        ) as NextResponse<ApiResponse<AutomationConfig>>;
+      if (newConfig.healthCheck.enabled) {
+        if (newConfig.healthCheck.checkIntervalSeconds < INTERVAL_HEALTH_CHECK_MIN_SECONDS) {
+          return errorResponse(
+            createMinValueError('ヘルスチェック間隔', INTERVAL_HEALTH_CHECK_MIN_SECONDS, '秒'),
+            400
+          ) as NextResponse<ApiResponse<AutomationConfig>>;
+        }
+        if (newConfig.healthCheck.consecutiveFailures < MIN_CONSECUTIVE_FAILURES) {
+          return errorResponse(
+            createMinValueError('連続失敗回数', MIN_CONSECUTIVE_FAILURES),
+            400
+          ) as NextResponse<ApiResponse<AutomationConfig>>;
+        }
       }
-      if (newConfig.healthCheck.consecutiveFailures < MIN_CONSECUTIVE_FAILURES) {
-        return errorResponse(
-          createMinValueError('連続失敗回数', MIN_CONSECUTIVE_FAILURES),
-          400
-        ) as NextResponse<ApiResponse<AutomationConfig>>;
-      }
-    }
 
-    await saveAutomationConfig(id, newConfig);
+      await saveAutomationConfig(id, newConfig);
 
-    return successResponse(newConfig);
+      return successResponse(newConfig);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(message) as NextResponse<ApiResponse<AutomationConfig>>;

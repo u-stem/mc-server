@@ -2,7 +2,12 @@
  * ヘルスモニタリング＆自動再起動
  */
 import type { HealthCheckConfig, HealthState, TpsInfo } from '@/types';
-import { getAutomationConfig, getHealthState, saveHealthState } from './automation';
+import {
+  getAutomationConfig,
+  getHealthState,
+  saveHealthState,
+  withStateFileLock,
+} from './automation';
 import { getServer } from './config';
 import {
   CRASH_DETECTION_WINDOW_MS,
@@ -88,124 +93,128 @@ export function evaluateHealth(
 export async function checkServerHealth(serverId: string): Promise<HealthState> {
   const config = await getAutomationConfig(serverId);
   const server = await getServer(serverId);
-  const state = await getHealthState(serverId);
 
   if (!server || !config.healthCheck.enabled) {
-    return state;
+    return getHealthState(serverId);
   }
 
   const now = new Date().toISOString();
   const status = await getServerStatus(serverId);
 
-  // サーバーが停止している場合
-  if (!status.running) {
-    // クラッシュ検出：前回は動いていたのに今は停止している場合
-    if (state.currentStatus !== 'unknown' && state.lastCheckTime) {
-      const lastCheck = new Date(state.lastCheckTime);
-      const timeSinceLastCheck = Date.now() - lastCheck.getTime();
+  // Wrap the entire state read-modify-write cycle under a lock
+  return withStateFileLock(serverId, 'health', async () => {
+    const state = await getHealthState(serverId);
 
-      // 意図的な停止かどうかを確認
-      const { isIntentionalStop } = await import('./automationScheduler');
-      const wasIntentional = isIntentionalStop(serverId);
+    // サーバーが停止している場合
+    if (!status.running) {
+      // クラッシュ検出：前回は動いていたのに今は停止している場合
+      if (state.currentStatus !== 'unknown' && state.lastCheckTime) {
+        const lastCheck = new Date(state.lastCheckTime);
+        const timeSinceLastCheck = Date.now() - lastCheck.getTime();
 
-      // 前回チェックから短時間で停止 かつ 意図的でない = クラッシュの可能性
-      if (
-        timeSinceLastCheck < CRASH_DETECTION_WINDOW_MS &&
-        config.healthCheck.crashDetection &&
-        !wasIntentional
-      ) {
-        logger.warn(`[HealthMonitor] Possible crash detected for ${server.name}`);
-        await notifyServerCrash(serverId, server.name, '予期しないサーバー停止');
+        // 意図的な停止かどうかを確認
+        const { isIntentionalStop } = await import('./automationScheduler');
+        const wasIntentional = isIntentionalStop(serverId);
 
-        // 自動再起動が有効で、クールダウン中でなければ再起動
-        if (config.healthCheck.autoRestart && shouldAutoRestart(state, config.healthCheck)) {
-          await performAutoRestart(
+        // 前回チェックから短時間で停止 かつ 意図的でない = クラッシュの可能性
+        if (
+          timeSinceLastCheck < CRASH_DETECTION_WINDOW_MS &&
+          config.healthCheck.crashDetection &&
+          !wasIntentional
+        ) {
+          logger.warn(`[HealthMonitor] Possible crash detected for ${server.name}`);
+          await notifyServerCrash(serverId, server.name, '予期しないサーバー停止');
+
+          // 自動再起動が有効で、クールダウン中でなければ再起動
+          if (config.healthCheck.autoRestart && shouldAutoRestart(state, config.healthCheck)) {
+            await performAutoRestart(
+              serverId,
+              server.name,
+              'クラッシュ検出',
+              state,
+              config.healthCheck
+            );
+          }
+        }
+      }
+
+      state.lastCheckTime = now;
+      state.currentStatus = 'unknown';
+      state.consecutiveFailures = 0;
+      await saveHealthState(serverId, state);
+      return state;
+    }
+
+    // TPS取得
+    const tps = status.tps || null;
+
+    // メモリ使用率計算
+    let memoryPercent: number | null = null;
+    if (status.memory) {
+      memoryPercent = parseMemoryPercent(status.memory);
+    }
+
+    // ヘルス状態を評価
+    const evaluation = evaluateHealth(tps, memoryPercent, config.healthCheck);
+
+    // 状態を更新
+    state.lastCheckTime = now;
+    state.lastTps = tps?.tps1m ?? null;
+    state.lastMemoryPercent = memoryPercent;
+
+    if (evaluation.status === 'healthy') {
+      state.currentStatus = 'healthy';
+      state.consecutiveFailures = 0;
+    } else {
+      state.currentStatus = evaluation.status;
+      state.consecutiveFailures++;
+
+      // アラート通知
+      if (state.consecutiveFailures === 1) {
+        // 最初の失敗時にアラート送信
+        if (tps && tps.tps1m < config.healthCheck.tpsThreshold) {
+          await notifyHealthAlert(
             serverId,
             server.name,
-            'クラッシュ検出',
-            state,
-            config.healthCheck
+            'tps',
+            tps.tps1m,
+            config.healthCheck.tpsThreshold,
+            evaluation.status === 'critical' ? 'critical' : 'warning'
+          );
+        } else if (
+          memoryPercent !== null &&
+          memoryPercent >= config.healthCheck.memoryThresholdPercent
+        ) {
+          await notifyHealthAlert(
+            serverId,
+            server.name,
+            'memory',
+            memoryPercent,
+            config.healthCheck.memoryThresholdPercent,
+            evaluation.status === 'critical' ? 'critical' : 'warning'
           );
         }
       }
-    }
 
-    state.lastCheckTime = now;
-    state.currentStatus = 'unknown';
-    state.consecutiveFailures = 0;
-    await saveHealthState(serverId, state);
-    return state;
-  }
-
-  // TPS取得
-  const tps = status.tps || null;
-
-  // メモリ使用率計算
-  let memoryPercent: number | null = null;
-  if (status.memory) {
-    memoryPercent = parseMemoryPercent(status.memory);
-  }
-
-  // ヘルス状態を評価
-  const evaluation = evaluateHealth(tps, memoryPercent, config.healthCheck);
-
-  // 状態を更新
-  state.lastCheckTime = now;
-  state.lastTps = tps?.tps1m ?? null;
-  state.lastMemoryPercent = memoryPercent;
-
-  if (evaluation.status === 'healthy') {
-    state.currentStatus = 'healthy';
-    state.consecutiveFailures = 0;
-  } else {
-    state.currentStatus = evaluation.status;
-    state.consecutiveFailures++;
-
-    // アラート通知
-    if (state.consecutiveFailures === 1) {
-      // 最初の失敗時にアラート送信
-      if (tps && tps.tps1m < config.healthCheck.tpsThreshold) {
-        await notifyHealthAlert(
-          serverId,
-          server.name,
-          'tps',
-          tps.tps1m,
-          config.healthCheck.tpsThreshold,
-          evaluation.status === 'critical' ? 'critical' : 'warning'
-        );
-      } else if (
-        memoryPercent !== null &&
-        memoryPercent >= config.healthCheck.memoryThresholdPercent
+      // 自動再起動チェック
+      if (
+        config.healthCheck.autoRestart &&
+        state.consecutiveFailures >= config.healthCheck.consecutiveFailures &&
+        shouldAutoRestart(state, config.healthCheck)
       ) {
-        await notifyHealthAlert(
+        await performAutoRestart(
           serverId,
           server.name,
-          'memory',
-          memoryPercent,
-          config.healthCheck.memoryThresholdPercent,
-          evaluation.status === 'critical' ? 'critical' : 'warning'
+          evaluation.reason || 'パフォーマンス低下',
+          state,
+          config.healthCheck
         );
       }
     }
 
-    // 自動再起動チェック
-    if (
-      config.healthCheck.autoRestart &&
-      state.consecutiveFailures >= config.healthCheck.consecutiveFailures &&
-      shouldAutoRestart(state, config.healthCheck)
-    ) {
-      await performAutoRestart(
-        serverId,
-        server.name,
-        evaluation.reason || 'パフォーマンス低下',
-        state,
-        config.healthCheck
-      );
-    }
-  }
-
-  await saveHealthState(serverId, state);
-  return state;
+    await saveHealthState(serverId, state);
+    return state;
+  });
 }
 
 /**

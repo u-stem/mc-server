@@ -22,6 +22,7 @@ import {
   ERROR_GAME_RCON_PORT_MUST_DIFFER,
   ERROR_GEYSER_PORT_MUST_DIFFER,
 } from './errorMessages';
+import { withFileLock } from './fileLock';
 import { applyOptimizations } from './optimization';
 
 // プロジェクトルートパス（環境変数で上書き可能）
@@ -98,74 +99,82 @@ export async function getServer(id: string): Promise<ServerConfig | null> {
   return config.servers.find((s) => s.id === id) || null;
 }
 
-// ポートが他のサーバーで使用されているかチェック
-export async function isPortInUse(port: number, excludeServerId?: string): Promise<boolean> {
-  const config = await loadConfig();
+// Check whether a port is already used by another server (internal, uses pre-loaded config)
+function checkPortInUse(
+  config: ServersConfigFile,
+  port: number,
+  excludeServerId?: string
+): boolean {
   return config.servers.some(
     (s) =>
       s.id !== excludeServerId && (s.port === port || s.rconPort === port || s.geyserPort === port)
   );
 }
 
+// Public wrapper that loads config on its own (for callers outside the lock)
+export async function isPortInUse(port: number, excludeServerId?: string): Promise<boolean> {
+  const config = await loadConfig();
+  return checkPortInUse(config, port, excludeServerId);
+}
+
 // サーバー作成
 export async function createServer(request: CreateServerRequest): Promise<ServerConfig> {
-  const config = await loadConfig();
+  return withFileLock('config', async () => {
+    const config = await loadConfig();
 
-  // ポート重複チェック
-  const gamePortInUse = await isPortInUse(request.port);
-  if (gamePortInUse) {
-    throw new Error(createPortInUseError('ゲーム', request.port));
-  }
-
-  // BedrockサーバーはRCONがないため、RCONポートのチェックをスキップ
-  const isBedrock = isBedrockServer(request.type);
-
-  if (!isBedrock && request.rconPort) {
-    const rconPortInUse = await isPortInUse(request.rconPort);
-    if (rconPortInUse) {
-      throw new Error(createPortInUseError('RCON', request.rconPort));
+    // ポート重複チェック (use pre-loaded config to avoid redundant reads)
+    if (checkPortInUse(config, request.port)) {
+      throw new Error(createPortInUseError('ゲーム', request.port));
     }
 
-    // 同じポートを使用していないかチェック
-    if (request.port === request.rconPort) {
-      throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
+    // BedrockサーバーはRCONがないため、RCONポートのチェックをスキップ
+    const isBedrock = isBedrockServer(request.type);
+
+    if (!isBedrock && request.rconPort) {
+      if (checkPortInUse(config, request.rconPort)) {
+        throw new Error(createPortInUseError('RCON', request.rconPort));
+      }
+
+      // 同じポートを使用していないかチェック
+      if (request.port === request.rconPort) {
+        throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
+      }
     }
-  }
 
-  // GeyserMCポートのチェック
-  if (request.geyserPort) {
-    const geyserPortInUse = await isPortInUse(request.geyserPort);
-    if (geyserPortInUse) {
-      throw new Error(createPortInUseError('GeyserMC', request.geyserPort));
+    // GeyserMCポートのチェック
+    if (request.geyserPort) {
+      if (checkPortInUse(config, request.geyserPort)) {
+        throw new Error(createPortInUseError('GeyserMC', request.geyserPort));
+      }
+      if (request.geyserPort === request.port || request.geyserPort === request.rconPort) {
+        throw new Error(ERROR_GEYSER_PORT_MUST_DIFFER);
+      }
     }
-    if (request.geyserPort === request.port || request.geyserPort === request.rconPort) {
-      throw new Error(ERROR_GEYSER_PORT_MUST_DIFFER);
-    }
-  }
 
-  const newServer: ServerConfig = {
-    ...request,
-    id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    const newServer: ServerConfig = {
+      ...request,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-  config.servers.push(newServer);
-  await saveConfig(config);
+    config.servers.push(newServer);
+    await saveConfig(config);
 
-  // サーバーディレクトリを作成
-  const serverDir = path.join(SERVERS_DIR, newServer.id);
-  await fs.mkdir(path.join(serverDir, FOLDER_DATA), { recursive: true });
-  await fs.mkdir(path.join(serverDir, FOLDER_BACKUPS), { recursive: true });
+    // サーバーディレクトリを作成
+    const serverDir = path.join(SERVERS_DIR, newServer.id);
+    await fs.mkdir(path.join(serverDir, FOLDER_DATA), { recursive: true });
+    await fs.mkdir(path.join(serverDir, FOLDER_BACKUPS), { recursive: true });
 
-  // docker-compose.yml を生成
-  await generateDockerCompose(newServer);
+    // docker-compose.yml を生成
+    await generateDockerCompose(newServer);
 
-  // サーバータイプに応じた最適化設定を適用
-  const dataPath = path.join(serverDir, FOLDER_DATA);
-  await applyOptimizations(newServer, dataPath);
+    // サーバータイプに応じた最適化設定を適用
+    const dataPath = path.join(serverDir, FOLDER_DATA);
+    await applyOptimizations(newServer, dataPath);
 
-  return newServer;
+    return newServer;
+  });
 }
 
 // サーバー更新
@@ -173,72 +182,74 @@ export async function updateServer(
   id: string,
   updates: Partial<CreateServerRequest>
 ): Promise<ServerConfig | null> {
-  const config = await loadConfig();
-  const index = config.servers.findIndex((s) => s.id === id);
+  return withFileLock('config', async () => {
+    const config = await loadConfig();
+    const index = config.servers.findIndex((s) => s.id === id);
 
-  if (index === -1) {
-    return null;
-  }
-
-  // ポート更新時は重複チェック
-  if (updates.port !== undefined) {
-    const gamePortInUse = await isPortInUse(updates.port, id);
-    if (gamePortInUse) {
-      throw new Error(createPortInUseError('ゲーム', updates.port));
+    if (index === -1) {
+      return null;
     }
-  }
 
-  if (updates.rconPort !== undefined) {
-    const rconPortInUse = await isPortInUse(updates.rconPort, id);
-    if (rconPortInUse) {
-      throw new Error(createPortInUseError('RCON', updates.rconPort));
+    // ポート更新時は重複チェック (use pre-loaded config)
+    if (updates.port !== undefined) {
+      if (checkPortInUse(config, updates.port, id)) {
+        throw new Error(createPortInUseError('ゲーム', updates.port));
+      }
     }
-  }
 
-  // 更新後のポートが同じになっていないかチェック
-  const newPort = updates.port ?? config.servers[index].port;
-  const newRconPort = updates.rconPort ?? config.servers[index].rconPort;
-  if (newPort === newRconPort) {
-    throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
-  }
+    if (updates.rconPort !== undefined) {
+      if (checkPortInUse(config, updates.rconPort, id)) {
+        throw new Error(createPortInUseError('RCON', updates.rconPort));
+      }
+    }
 
-  config.servers[index] = {
-    ...config.servers[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
+    // 更新後のポートが同じになっていないかチェック
+    const newPort = updates.port ?? config.servers[index].port;
+    const newRconPort = updates.rconPort ?? config.servers[index].rconPort;
+    if (newPort === newRconPort) {
+      throw new Error(ERROR_GAME_RCON_PORT_MUST_DIFFER);
+    }
 
-  await saveConfig(config);
-  await generateDockerCompose(config.servers[index]);
+    config.servers[index] = {
+      ...config.servers[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
 
-  return config.servers[index];
+    await saveConfig(config);
+    await generateDockerCompose(config.servers[index]);
+
+    return config.servers[index];
+  });
 }
 
 // サーバー削除
 export async function deleteServer(id: string): Promise<boolean> {
-  const config = await loadConfig();
-  const index = config.servers.findIndex((s) => s.id === id);
+  return withFileLock('config', async () => {
+    const config = await loadConfig();
+    const index = config.servers.findIndex((s) => s.id === id);
 
-  if (index === -1) {
-    return false;
-  }
+    if (index === -1) {
+      return false;
+    }
 
-  config.servers.splice(index, 1);
-  await saveConfig(config);
+    config.servers.splice(index, 1);
+    await saveConfig(config);
 
-  // オートメーション関連のメモリ状態をクリーンアップ
-  try {
-    const { cleanupServerState } = await import('./automationScheduler');
-    cleanupServerState(id);
-  } catch {
-    // クリーンアップ失敗は無視
-  }
+    // オートメーション関連のメモリ状態をクリーンアップ
+    try {
+      const { cleanupServerState } = await import('./automationScheduler');
+      cleanupServerState(id);
+    } catch {
+      // クリーンアップ失敗は無視
+    }
 
-  // サーバーディレクトリを削除（オプション）
-  // const serverDir = path.join(SERVERS_DIR, id);
-  // await fs.rm(serverDir, { recursive: true, force: true });
+    // サーバーディレクトリを削除（オプション）
+    // const serverDir = path.join(SERVERS_DIR, id);
+    // await fs.rm(serverDir, { recursive: true, force: true });
 
-  return true;
+    return true;
+  });
 }
 
 // メモリ設定をパースしてGB単位の数値を取得

@@ -1,6 +1,9 @@
+import { createHash } from 'node:crypto';
+import { promises as fsPromises } from 'node:fs';
+import path from 'node:path';
 import { Rcon } from 'rcon-client';
 import type { TpsInfo, WhitelistEntry } from '@/types';
-import { getServer } from './config';
+import { getServer, getServerDataPath } from './config';
 import { MESSAGE_MAX_LENGTH, REASON_MAX_LENGTH, TIMEOUT_RCON_MS } from './constants';
 import { getServerStatus } from './docker';
 import {
@@ -12,10 +15,23 @@ import {
   ERROR_SERVER_NOT_FOUND,
   ERROR_WHITELIST_FILE_NOT_FOUND,
 } from './errorMessages';
+import { withFileLock } from './fileLock';
 import { isValidPlayerName, validateServerId } from './validation';
 
 // RCON設定
 const RCON_HOST = 'localhost';
+
+// RCONインジェクション防止用: ASCII制御文字 (0x00-0x1F, 0x7F) を除去
+function stripControlChars(str: string): string {
+  let result = '';
+  for (const ch of str) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x20 && code !== 0x7f) {
+      result += ch;
+    }
+  }
+  return result;
+}
 
 // RCON 接続を作成
 async function createRconConnection(serverId: string): Promise<Rcon> {
@@ -43,8 +59,33 @@ async function isServerRunning(serverId: string): Promise<boolean> {
   try {
     const status = await getServerStatus(serverId);
     return status.running;
-  } catch {
+  } catch (error) {
+    console.warn('[RCON] Failed to check server status:', error);
     return false;
+  }
+}
+
+// Minecraft互換のオフラインUUID (v3) を生成
+export function generateOfflineUuid(playerName: string): string {
+  const hash = createHash('md5').update(`OfflinePlayer:${playerName}`).digest();
+  hash[6] = (hash[6] & 0x0f) | 0x30; // version = 3
+  hash[8] = (hash[8] & 0x3f) | 0x80; // variant = IETF
+  const hex = hash.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+// Mojang APIでプレイヤーの正規UUIDを取得
+export async function fetchMojangUuid(playerName: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(playerName)}`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { id: string };
+    const id = data.id;
+    return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+  } catch {
+    return null;
   }
 }
 
@@ -60,7 +101,7 @@ async function executeCommand(serverId: string, command: string): Promise<string
   }
 }
 
-// ホワイトリスト取得
+// ホワイトリスト取得 (lock prevents reading a half-written file)
 export async function getWhitelist(serverId: string): Promise<WhitelistEntry[]> {
   // サーバーIDをバリデーション
   validateServerId(serverId);
@@ -71,21 +112,22 @@ export async function getWhitelist(serverId: string): Promise<WhitelistEntry[]> 
     throw new Error(ERROR_SERVER_NOT_FOUND);
   }
 
-  // whitelist.json を直接読む方が確実
-  const { promises: fs } = await import('node:fs');
-  const { getServerDataPath } = await import('./config');
+  return withFileLock(`whitelist:${serverId}`, async () => {
+    // whitelist.json を直接読む
+    const dataPath = getServerDataPath(serverId);
+    const whitelistPath = path.join(dataPath, 'whitelist.json');
 
-  const dataPath = getServerDataPath(serverId);
-  const whitelistPath = `${dataPath}/whitelist.json`;
-
-  try {
-    const content = await fs.readFile(whitelistPath, 'utf-8');
-    const whitelist = JSON.parse(content) as WhitelistEntry[];
-    return whitelist;
-  } catch {
-    // ファイルが存在しない場合は空配列
-    return [];
-  }
+    try {
+      const content = await fsPromises.readFile(whitelistPath, 'utf-8');
+      return JSON.parse(content) as WhitelistEntry[];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return [];
+      }
+      // JSONパースエラー等はそのまま伝播
+      throw error;
+    }
+  });
 }
 
 // ホワイトリストにプレイヤーを追加
@@ -111,41 +153,37 @@ export async function addToWhitelist(serverId: string, playerName: string): Prom
     }
   }
 
-  // サーバー停止中はファイルを直接編集
-  const { promises: fs } = await import('node:fs');
-  const { getServerDataPath } = await import('./config');
+  // サーバー停止中はファイルを直接編集（ロックで直列化）
+  return withFileLock(`whitelist:${serverId}`, async () => {
+    const dataPath = getServerDataPath(serverId);
+    const whitelistPath = path.join(dataPath, 'whitelist.json');
 
-  const dataPath = getServerDataPath(serverId);
-  const whitelistPath = `${dataPath}/whitelist.json`;
+    let whitelist: WhitelistEntry[] = [];
 
-  let whitelist: WhitelistEntry[] = [];
+    try {
+      const content = await fsPromises.readFile(whitelistPath, 'utf-8');
+      whitelist = JSON.parse(content);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
 
-  try {
-    const content = await fs.readFile(whitelistPath, 'utf-8');
-    whitelist = JSON.parse(content);
-  } catch {
-    // ファイルが存在しない場合
-  }
+    // 既に存在するかチェック
+    if (whitelist.some((entry) => entry.name.toLowerCase() === playerName.toLowerCase())) {
+      return `Player ${playerName} is already whitelisted`;
+    }
 
-  // 既に存在するかチェック
-  if (whitelist.some((entry) => entry.name.toLowerCase() === playerName.toLowerCase())) {
-    return `Player ${playerName} is already whitelisted`;
-  }
+    // Mojang APIで正規UUIDを取得、失敗時はオフラインUUIDにフォールバック
+    const uuid = (await fetchMojangUuid(playerName)) ?? generateOfflineUuid(playerName);
 
-  // オフラインモード用のUUIDを生成（Minecraft互換形式）
-  // "OfflinePlayer:" + playerName のMD5ハッシュをUUID v3形式で生成
-  const { createHash } = await import('node:crypto');
-  const hash = createHash('md5').update(`OfflinePlayer:${playerName}`).digest('hex');
-  const offlineUuid = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+    whitelist.push({ uuid, name: playerName });
 
-  whitelist.push({
-    uuid: offlineUuid,
-    name: playerName,
+    await fsPromises.mkdir(path.dirname(whitelistPath), { recursive: true });
+    await fsPromises.writeFile(whitelistPath, JSON.stringify(whitelist, null, 2));
+
+    return `Added ${playerName} to whitelist`;
   });
-
-  await fs.writeFile(whitelistPath, JSON.stringify(whitelist, null, 2));
-
-  return `Added ${playerName} to whitelist`;
 }
 
 // ホワイトリストからプレイヤーを削除
@@ -171,34 +209,39 @@ export async function removeFromWhitelist(serverId: string, playerName: string):
     }
   }
 
-  // サーバー停止中はファイルを直接編集
-  const { promises: fs } = await import('node:fs');
-  const { getServerDataPath } = await import('./config');
+  // サーバー停止中はファイルを直接編集（ロックで直列化）
+  return withFileLock(`whitelist:${serverId}`, async () => {
+    const dataPath = getServerDataPath(serverId);
+    const whitelistPath = path.join(dataPath, 'whitelist.json');
 
-  const dataPath = getServerDataPath(serverId);
-  const whitelistPath = `${dataPath}/whitelist.json`;
+    let whitelist: WhitelistEntry[] = [];
 
-  let whitelist: WhitelistEntry[] = [];
+    try {
+      const content = await fsPromises.readFile(whitelistPath, 'utf-8');
+      whitelist = JSON.parse(content);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new Error(ERROR_WHITELIST_FILE_NOT_FOUND);
+      }
+      // JSONパースエラー等はそのまま伝播
+      throw error;
+    }
 
-  try {
-    const content = await fs.readFile(whitelistPath, 'utf-8');
-    whitelist = JSON.parse(content);
-  } catch {
-    return ERROR_WHITELIST_FILE_NOT_FOUND;
-  }
+    const index = whitelist.findIndex(
+      (entry) => entry.name.toLowerCase() === playerName.toLowerCase()
+    );
 
-  const index = whitelist.findIndex(
-    (entry) => entry.name.toLowerCase() === playerName.toLowerCase()
-  );
+    if (index === -1) {
+      return `Player ${playerName} is not whitelisted`;
+    }
 
-  if (index === -1) {
-    return `Player ${playerName} is not whitelisted`;
-  }
+    whitelist.splice(index, 1);
 
-  whitelist.splice(index, 1);
-  await fs.writeFile(whitelistPath, JSON.stringify(whitelist, null, 2));
+    await fsPromises.mkdir(path.dirname(whitelistPath), { recursive: true });
+    await fsPromises.writeFile(whitelistPath, JSON.stringify(whitelist, null, 2));
 
-  return `Removed ${playerName} from whitelist`;
+    return `Removed ${playerName} from whitelist`;
+  });
 }
 
 // プレイヤー一覧取得
@@ -297,7 +340,9 @@ export async function executeConsoleCommand(serverId: string, command: string): 
     throw new Error(createCommandNotAllowedError(baseCommand, ALLOWED_COMMANDS));
   }
 
-  return executeCommand(serverId, commandWithoutSlash);
+  // strip control characters to prevent command injection via RCON
+  const sanitizedCommand = stripControlChars(commandWithoutSlash);
+  return executeCommand(serverId, sanitizedCommand);
 }
 
 // プレイヤーをBan
@@ -312,9 +357,10 @@ export async function banPlayer(
     throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
-  const command = reason
-    ? `ban ${playerName} ${reason.slice(0, REASON_MAX_LENGTH)}`
-    : `ban ${playerName}`;
+  const sanitizedReason = reason
+    ? stripControlChars(reason).slice(0, REASON_MAX_LENGTH)
+    : undefined;
+  const command = sanitizedReason ? `ban ${playerName} ${sanitizedReason}` : `ban ${playerName}`;
 
   return executeCommand(serverId, command);
 }
@@ -342,9 +388,10 @@ export async function kickPlayer(
     throw new Error(ERROR_INVALID_PLAYER_NAME_FORMAT);
   }
 
-  const command = reason
-    ? `kick ${playerName} ${reason.slice(0, REASON_MAX_LENGTH)}`
-    : `kick ${playerName}`;
+  const sanitizedReason = reason
+    ? stripControlChars(reason).slice(0, REASON_MAX_LENGTH)
+    : undefined;
+  const command = sanitizedReason ? `kick ${playerName} ${sanitizedReason}` : `kick ${playerName}`;
 
   return executeCommand(serverId, command);
 }

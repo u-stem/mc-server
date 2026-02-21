@@ -4,7 +4,12 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { AutoBackupConfig, BackupInfo, BackupState } from '@/types';
-import { getAutomationConfig, getBackupState, saveBackupState } from './automation';
+import {
+  getAutomationConfig,
+  getBackupState,
+  saveBackupState,
+  withStateFileLock,
+} from './automation';
 import { createBackup, createFullBackup, listBackups } from './backup';
 import { getServer, getServerBackupPath } from './config';
 import { INTERVAL_BACKUP_MIN_MS, INTERVAL_BACKUP_WEEKLY_MIN_MS, MS_PER_DAY } from './constants';
@@ -169,14 +174,16 @@ export async function runScheduledBackup(serverId: string): Promise<BackupInfo |
     logger.error(`[AutoBackup] Backup failed for ${serverId}:`, error);
   }
 
-  // 状態を更新
-  const state = await getBackupState(serverId);
-  state.lastBackupTime = new Date().toISOString();
-  state.lastBackupType = config.backup.backupType;
-  state.lastBackupSuccess = success;
-  state.nextScheduledBackup =
-    calculateNextBackupTime(config.backup, new Date())?.toISOString() || null;
-  await saveBackupState(serverId, state);
+  // Read-modify-write of backup state under a lock
+  await withStateFileLock(serverId, 'backup', async () => {
+    const state = await getBackupState(serverId);
+    state.lastBackupTime = new Date().toISOString();
+    state.lastBackupType = config.backup.backupType;
+    state.lastBackupSuccess = success;
+    state.nextScheduledBackup =
+      calculateNextBackupTime(config.backup, new Date())?.toISOString() || null;
+    await saveBackupState(serverId, state);
+  });
 
   // Discord通知
   await notifyBackupComplete(
@@ -234,12 +241,14 @@ export async function runEventBackup(
     logger.error(`[AutoBackup] ${event} backup failed for ${serverId}:`, error);
   }
 
-  // 状態を更新
-  const state = await getBackupState(serverId);
-  state.lastBackupTime = new Date().toISOString();
-  state.lastBackupType = config.backup.backupType;
-  state.lastBackupSuccess = success;
-  await saveBackupState(serverId, state);
+  // Read-modify-write of backup state under a lock
+  await withStateFileLock(serverId, 'backup', async () => {
+    const state = await getBackupState(serverId);
+    state.lastBackupTime = new Date().toISOString();
+    state.lastBackupType = config.backup.backupType;
+    state.lastBackupSuccess = success;
+    await saveBackupState(serverId, state);
+  });
 
   // Discord通知（停止時のみ、起動時は不要）
   if (event === 'stop') {

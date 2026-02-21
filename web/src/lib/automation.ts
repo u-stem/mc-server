@@ -21,7 +21,18 @@ import {
   FILE_HEALTH_STATE,
   FILE_PLUGIN_UPDATES,
 } from './constants';
+import { withFileLock } from './fileLock';
 import { validateServerId } from './validation';
+
+type StateType = 'automation' | 'backup' | 'health' | 'pluginUpdate';
+
+export function withStateFileLock<T>(
+  serverId: string,
+  stateType: StateType,
+  fn: () => Promise<T>
+): Promise<T> {
+  return withFileLock(`state:${serverId}:${stateType}`, fn);
+}
 
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.cwd(), '..');
 const SERVERS_DIR = path.join(PROJECT_ROOT, 'servers');
@@ -100,10 +111,12 @@ export async function saveAutomationConfig(
 ): Promise<void> {
   validateServerId(serverId);
 
-  const configPath = getAutomationPath(serverId);
-  const dir = path.dirname(configPath);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  return withStateFileLock(serverId, 'automation', async () => {
+    const configPath = getAutomationPath(serverId);
+    const dir = path.dirname(configPath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  });
 }
 
 /**
@@ -127,10 +140,12 @@ export async function getBackupState(serverId: string): Promise<BackupState> {
 export async function saveBackupState(serverId: string, state: BackupState): Promise<void> {
   validateServerId(serverId);
 
-  const statePath = getBackupStatePath(serverId);
-  const dir = path.dirname(statePath);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  return withStateFileLock(serverId, 'backup', async () => {
+    const statePath = getBackupStatePath(serverId);
+    const dir = path.dirname(statePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  });
 }
 
 /**
@@ -154,10 +169,12 @@ export async function getHealthState(serverId: string): Promise<HealthState> {
 export async function saveHealthState(serverId: string, state: HealthState): Promise<void> {
   validateServerId(serverId);
 
-  const statePath = getHealthStatePath(serverId);
-  const dir = path.dirname(statePath);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  return withStateFileLock(serverId, 'health', async () => {
+    const statePath = getHealthStatePath(serverId);
+    const dir = path.dirname(statePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  });
 }
 
 /**
@@ -184,8 +201,10 @@ export async function savePluginUpdateState(
 ): Promise<void> {
   validateServerId(serverId);
 
-  const statePath = getPluginUpdateStatePath(serverId);
-  const dir = path.dirname(statePath);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  return withStateFileLock(serverId, 'pluginUpdate', async () => {
+    const statePath = getPluginUpdateStatePath(serverId);
+    const dir = path.dirname(statePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
+  });
 }
