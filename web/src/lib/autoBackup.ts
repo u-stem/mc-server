@@ -7,7 +7,7 @@ import type { AutoBackupConfig, BackupInfo, BackupState } from '@/types';
 import {
   getAutomationConfig,
   getBackupState,
-  saveBackupState,
+  getBackupStatePath,
   withStateFileLock,
 } from './automation';
 import { createBackup, createFullBackup, listBackups } from './backup';
@@ -182,7 +182,9 @@ export async function runScheduledBackup(serverId: string): Promise<BackupInfo |
     state.lastBackupSuccess = success;
     state.nextScheduledBackup =
       calculateNextBackupTime(config.backup, new Date())?.toISOString() || null;
-    await saveBackupState(serverId, state);
+    const statePath = getBackupStatePath(serverId);
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
   });
 
   // Discord通知
@@ -247,7 +249,9 @@ export async function runEventBackup(
     state.lastBackupTime = new Date().toISOString();
     state.lastBackupType = config.backup.backupType;
     state.lastBackupSuccess = success;
-    await saveBackupState(serverId, state);
+    const statePath = getBackupStatePath(serverId);
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
   });
 
   // Discord通知（停止時のみ、起動時は不要）

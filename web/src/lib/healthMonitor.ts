@@ -1,11 +1,13 @@
 /**
  * ヘルスモニタリング＆自動再起動
  */
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import type { HealthCheckConfig, HealthState, TpsInfo } from '@/types';
 import {
   getAutomationConfig,
   getHealthState,
-  saveHealthState,
+  getHealthStatePath,
   withStateFileLock,
 } from './automation';
 import { getServer } from './config';
@@ -141,7 +143,9 @@ export async function checkServerHealth(serverId: string): Promise<HealthState> 
       state.lastCheckTime = now;
       state.currentStatus = 'unknown';
       state.consecutiveFailures = 0;
-      await saveHealthState(serverId, state);
+      const earlyStatePath = getHealthStatePath(serverId);
+      await fs.mkdir(path.dirname(earlyStatePath), { recursive: true });
+      await fs.writeFile(earlyStatePath, JSON.stringify(state, null, 2));
       return state;
     }
 
@@ -212,7 +216,9 @@ export async function checkServerHealth(serverId: string): Promise<HealthState> 
       }
     }
 
-    await saveHealthState(serverId, state);
+    const statePath = getHealthStatePath(serverId);
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(state, null, 2));
     return state;
   });
 }
