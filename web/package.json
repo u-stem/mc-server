@@ -38,7 +38,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^11.0.0",
-    "@vitejs/plugin-react": "^5.1.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
